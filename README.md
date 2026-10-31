@@ -56,6 +56,23 @@ sudo ufw allow 3000/tcp
 3. เจ้าของเกมดู IP ของเครื่องที่เปิดเซิร์ฟเวอร์ด้วย `tailscale ip -4` (จะได้เลขขึ้นต้น `100.`)
 4. เพื่อนเปิด `http://<Tailscale IP>:3000` เช่น `http://100.101.102.103:3000`
 
+## รันด้วย Docker
+
+สร้าง image แล้วรัน container (ต้องติดตั้ง Docker ก่อน):
+
+```bash
+docker build -t pokemon-board-game .
+docker run -d --name pokemon -p 3000:3000 --restart unless-stopped pokemon-board-game
+```
+
+แล้วเปิด `http://localhost:3000` ส่วนเพื่อนให้เข้าด้วย IP ของเครื่องที่รัน Docker (เช่น `http://192.168.1.20:3000`)
+ไม่ใช่ IP ที่ขึ้นใน log ของ container เพราะนั่นเป็น IP ภายในของ Docker
+
+- เปลี่ยนพอร์ตฝั่งเครื่องได้ที่ `-p` เช่น `-p 4000:3000` แล้วเข้า `http://localhost:4000`
+- ดู log: `docker logs -f pokemon` · หยุด: `docker stop pokemon` · ลบ: `docker rm pokemon`
+- แก้โค้ดแล้วต้อง `docker build` ใหม่ และลบ container เก่าก่อนรันใหม่
+- ห้องเกมเก็บในหน่วยความจำ หยุดหรือรีสตาร์ต container แล้วห้องที่เล่นค้างอยู่จะหายไป
+
 ## สร้างข้อมูลโปเกเด็กซ์ใหม่
 
 ไฟล์ `data/pokedex.json` (Gen 1 ครบ 151 ตัว: ชื่อ ธาตุ ค่าสถานะรวม และ URL ภาพ) commit ไว้แล้ว ปกติไม่ต้องทำอะไร
