@@ -11,6 +11,7 @@ import { appendHistory, describeEvent, orderEvents } from '../ui/history.js';
 // ระยะเวลาแอนิเมชัน (มิลลิวินาที): ตัวหมากเดินช่องละ 150 ลูกเต๋าหมุน ~600 (อยู่ใน dice.js)
 const STEP_MS = 150;
 const HOLD_MS = { roll: 250, note: 550, result: 1000, battle: 1300 };
+const MIN_CENTER_BOARD_PX = 520;
 
 // หน้าเกม: กระดานอยู่ซ้าย แผงข้อมูลอยู่ขวา (จอแคบกว่า 768px แผงลงไปอยู่ใต้กระดาน)
 //
@@ -49,13 +50,20 @@ export function mountGame(root, ctx) {
   const queue = [];
   let pumping = false;
   const tick = setInterval(() => renderTimer(timerEl, room, ctx.serverNow), 500);
-  // จอกว้าง: การ์ดคำสั่งอยู่กลางกระดานใต้ลูกเต๋า; จอแคบ: อยู่ในแผงตำแหน่งเดิม
+  // จอกว้างและกระดานใหญ่พอ: การ์ดคำสั่งอยู่กลางกระดานใต้ลูกเต๋า; ไม่งั้นอยู่ในแผงตำแหน่งเดิม
+  // (กระดานแคบกว่า MIN_CENTER_BOARD_PX กลางกระดานเตี้ยเกินจนปุ่มต้องเลื่อนในกล่องเล็กๆ)
   // ย้าย element เดิม (ไม่สร้างใหม่) ค่าที่เลือกค้างใน actions.js จึงยังอยู่
   const desktop = matchMedia('(min-width: 768px)');
+  let boardWide = false;
+  const boardObserver = new ResizeObserver(([entry]) => {
+    boardWide = entry.contentRect.width >= MIN_CENTER_BOARD_PX;
+    placeActions();
+  });
   const myId = () => ctx.getMyId();
   const send = action => ctx.request('game:action', { action });
 
   desktop.addEventListener('change', placeActions);
+  boardObserver.observe(boardEl);
 
   const sleep = ms => (prefersReducedMotion() || ms <= 0 ? Promise.resolve() : new Promise(resolve => setTimeout(resolve, ms)));
 
@@ -69,7 +77,7 @@ export function mountGame(root, ctx) {
 
   function placeActions() {
     const center = boardEl.querySelector('.board-center');
-    if (desktop.matches && center) {
+    if (desktop.matches && boardWide && center) {
       if (actionArea.parentElement === center) return;
       center.append(actionArea);
     } else {
@@ -267,6 +275,7 @@ export function mountGame(root, ctx) {
       destroyed = true;
       clearInterval(tick);
       desktop.removeEventListener('change', placeActions);
+      boardObserver.disconnect();
     },
   };
 }

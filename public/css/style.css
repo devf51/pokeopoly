@@ -766,12 +766,19 @@ button, input { font: inherit; color: inherit; }
   .board-center:has(.action-area:not([hidden]) .actions-card) .stage-caption { font-size: max(0.8rem, 2.4cqw); }
 
   .board-center .action-area { display: flex; flex: 1 1 auto; width: 100%; min-height: 0; color: var(--ink); text-align: start; }
-  .board-center .action-area[hidden] { display: none; }
+  /* ไม่ใช่ตาเรา / เกมจบ: ไม่มีการ์ด อย่ากินที่ ให้ชื่อเกมกับ "ตาของ X" อยู่กลางเหมือนเดิม */
+  .board-center .action-area[hidden], .board-center .action-area:not(:has(.actions-card)) { display: none; }
+  /* กลางกระดานเล็ก (จอ 768–950px): body หดก่อนจนเหลือขั้นต่ำ แล้ว footer ค่อยหดและเลื่อนได้ ปุ่มไม่ถูกตัดทิ้ง */
+  .board-center .actions-body { flex-shrink: 1000; min-height: 4.5rem; }
+  .board-center .actions-footer { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
   .board-center .actions-card { width: 100%; max-height: 100%; }
   .board-center .wait-card { display: none; }
   .board-center .act-warp, .board-center .act-mons { grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); }
   /* ปุ่มหลักหลายปุ่ม (บอล 3 ลูก / ทอยใหม่) เรียงเป็นแถว ให้ body เหลือที่ */
   .board-center .actions-footer .act-list { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+  @container (max-width: 560px) {
+    .board-center .actions-footer .act-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
   /* เงาบน/ล่างเมื่อ body ยังเลื่อนต่อได้ บอกว่ามีตัวเลือกซ่อนอยู่ */
   .board-center .actions-body {
     background:
