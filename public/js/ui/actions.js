@@ -1,5 +1,6 @@
 import { h, rerender, sprite } from './dom.js';
 import { buildActionModel } from './action-model.js';
+import { splitActionSections } from './action-layout.js';
 
 // วาดปุ่ม action ตามโมเดลจาก action-model.js (ปุ่มตรงกับตาราง "Actions ต่อ step")
 // แสดงปุ่มเฉพาะเมื่อ actorOf เป็นเรา; ปุ่มที่ใช้ไม่ได้ disabled พร้อมเหตุผลภาษาไทย
@@ -51,7 +52,19 @@ function draw(el, st, freshRoom) {
 
   const redraw = () => draw(el, st, null);
   const run = action => submit(el, st, action);
-  rerender(el, () => buildCard(model, st, { run, redraw, pokedexById }));
+  // อยู่กลางกระดาน (คอม) = การ์ดสองส่วน; อยู่ในแผง (มือถือ) = เรียงต่อกันแบบเดิม
+  const pinned = Boolean(el.closest('.board-center'));
+  // วาดใหม่ทั้งการ์ด: จำตำแหน่งเลื่อนของ body ไว้ ไม่งั้นเลือกตัวท้ายรายการแล้วเด้งกลับบนสุด
+  const scrollTop = el.querySelector('.actions-body')?.scrollTop ?? 0;
+  rerender(el, () => buildCard(model, st, { run, redraw, pokedexById }, pinned));
+  const body = el.querySelector('.actions-body');
+  if (body) body.scrollTop = scrollTop;
+}
+
+// วาดการ์ดเดิมใหม่ (เช่นหลังย้าย el ระหว่างกลางกระดานกับแผง) ค่าที่เลือกและ error ยังอยู่
+export function redrawActions(el) {
+  const st = states.get(el);
+  if (st?.last) draw(el, st, null);
 }
 
 async function submit(el, st, action) {
@@ -82,15 +95,28 @@ async function submit(el, st, action) {
 
 // ---------- DOM ----------
 
-function buildCard(model, st, ctx) {
+function buildCard(model, st, ctx, pinned) {
   if (!model.mine) {
     return [h('section', { class: 'card wait-card', role: 'status' }, h('p', {}, model.summary[0]))];
   }
-  return [h('section', { class: 'card actions-card is-mine', 'aria-busy': st.busy ? 'true' : undefined, 'aria-labelledby': 'actions-title' },
-    h('h2', { id: 'actions-title', class: 'section-title' }, model.title),
-    model.summary.map(line => h('p', { class: 'action-summary' }, line)),
-    st.error && h('p', { class: 'form-error', role: 'alert' }, st.error),
-    model.sections.map(section => buildSection(section, model, st, ctx)))];
+  const attrs = { class: 'card actions-card is-mine', 'aria-busy': st.busy ? 'true' : undefined, 'aria-labelledby': 'actions-title' };
+  if (!pinned) {
+    return [h('section', attrs,
+      h('h2', { id: 'actions-title', class: 'section-title' }, model.title),
+      model.summary.map(line => h('p', { class: 'action-summary' }, line)),
+      st.error && h('p', { class: 'form-error', role: 'alert' }, st.error),
+      model.sections.map(section => buildSection(section, model, st, ctx)))];
+  }
+  // body เลื่อนได้ในการ์ด; footer (error + ปุ่มหลัก) ติดล่างการ์ด เห็นเสมอ
+  const { body, footer } = splitActionSections(model.sections);
+  return [h('section', { ...attrs, class: `${attrs.class} is-pinned` },
+    h('div', { class: 'actions-body' },
+      h('h2', { id: 'actions-title', class: 'section-title' }, model.title),
+      model.summary.map(line => h('p', { class: 'action-summary' }, line)),
+      body.map(section => buildSection(section, model, st, ctx))),
+    h('div', { class: 'actions-footer' },
+      st.error && h('p', { class: 'form-error', role: 'alert' }, st.error),
+      footer.map(section => buildSection(section, model, st, ctx))))];
 }
 
 function buildSection(section, model, st, ctx) {

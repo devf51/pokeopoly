@@ -592,6 +592,11 @@ button, input { font: inherit; color: inherit; }
   background: #fffbe6;
   box-shadow: var(--shadow), 0 0 0 4px var(--yellow);
 }
+/* การ์ดคำสั่งสองส่วน (เฉพาะตอนอยู่กลางกระดาน): body เลื่อนได้ / footer (ปุ่มหลัก) ติดล่างการ์ดเสมอ */
+.actions-card.is-pinned { display: flex; flex-direction: column; min-height: 0; }
+.actions-body { overflow-y: auto; min-height: 0; flex: 1 1 auto; scroll-padding-bottom: 1rem; }
+.actions-footer { flex: none; margin-top: 0.85rem; padding-top: 0.6rem; border-top: 2px dashed var(--ink); }
+.actions-footer .act-group:first-of-type { margin-top: 0; }
 .wait-card { text-align: center; font-weight: 600; color: var(--muted); }
 .action-summary { margin-bottom: 0.5rem; font-weight: 700; }
 .actions-card .form-error { margin-top: 0; margin-bottom: 0.6rem; }
