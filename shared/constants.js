@@ -18,6 +18,7 @@ export const BALLS = {
   ultra: { bonus: 2, price: 250 },
 };
 export const MERCHANT_DISCOUNT = 0.3;
+export const CATCHER_BONUS = 1;
 
 export const ZONE_TARGET = { 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, legendary: 7 };
 export const ZONE_VALUE = { 1: 50, 2: 100, 3: 200, 4: 400, 5: 800, legendary: 2000 };
