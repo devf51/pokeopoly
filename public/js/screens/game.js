@@ -3,7 +3,7 @@ import { h, sprite } from '../ui/dom.js';
 import { renderBoard, placeToken, playerColor } from '../ui/board.js';
 import { BALL_INFO, STEP_LABEL } from '../ui/info.js';
 import { renderPanel, renderTimer } from '../ui/panel.js';
-import { renderActions } from '../ui/actions.js';
+import { redrawActions, renderActions } from '../ui/actions.js';
 import { renderResults } from '../ui/results.js';
 import { animateDice, prefersReducedMotion } from '../ui/dice.js';
 import { appendHistory, describeEvent, orderEvents } from '../ui/history.js';
@@ -49,8 +49,13 @@ export function mountGame(root, ctx) {
   const queue = [];
   let pumping = false;
   const tick = setInterval(() => renderTimer(timerEl, room, ctx.serverNow), 500);
+  // จอกว้าง: การ์ดคำสั่งอยู่กลางกระดานใต้ลูกเต๋า; จอแคบ: อยู่ในแผงตำแหน่งเดิม
+  // ย้าย element เดิม (ไม่สร้างใหม่) ค่าที่เลือกค้างใน actions.js จึงยังอยู่
+  const desktop = matchMedia('(min-width: 768px)');
   const myId = () => ctx.getMyId();
   const send = action => ctx.request('game:action', { action });
+
+  desktop.addEventListener('change', placeActions);
 
   const sleep = ms => (prefersReducedMotion() || ms <= 0 ? Promise.resolve() : new Promise(resolve => setTimeout(resolve, ms)));
 
@@ -61,6 +66,18 @@ export function mountGame(root, ctx) {
   });
 
   // ---------- ช่องกลางกระดาน ----------
+
+  function placeActions() {
+    const center = boardEl.querySelector('.board-center');
+    if (desktop.matches && center) {
+      if (actionArea.parentElement === center) return;
+      center.append(actionArea);
+    } else {
+      if (actionArea.previousElementSibling === resultsSlot) return;
+      resultsSlot.after(actionArea);
+    }
+    redrawActions(actionArea);
+  }
 
   function ensureStage() {
     if (stage) return stage;
@@ -199,6 +216,8 @@ export function mountGame(root, ctx) {
     const first = room === null;
     room = next;
     renderBoard(boardEl, room, ctx.pokedexById, myId());
+    placeActions();
+    actionArea.hidden = false;
     renderTurn();
     renderPanel(playersSlot, room, ctx.pokedexById, myId());
     renderTimer(timerEl, room, ctx.serverNow);
@@ -225,7 +244,11 @@ export function mountGame(root, ctx) {
       while (queue.length && !destroyed) {
         const item = queue.shift();
         const animate = room !== null && queue.length === 0 && item.events.length > 0 && !document.hidden;
-        if (animate) await playEvents(item.events, item.room);
+        if (animate) {
+          // กลางกระดาน: ซ่อนการ์ดคำสั่งระหว่างแอนิเมชัน ไม่ให้บังลูกเต๋า (applyState แสดงคืน)
+          if (actionArea.closest('.board-center')) actionArea.hidden = true;
+          await playEvents(item.events, item.room);
+        }
         if (destroyed) return;
         applyState(item.room, item.events);
       }
@@ -243,6 +266,7 @@ export function mountGame(root, ctx) {
     destroy() {
       destroyed = true;
       clearInterval(tick);
+      desktop.removeEventListener('change', placeActions);
     },
   };
 }
