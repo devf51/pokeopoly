@@ -25,6 +25,8 @@ export const ZONE_VALUE = { 1: 50, 2: 100, 3: 200, 4: 400, 5: 800, legendary: 20
 
 export const LEGENDARY_IDS = [144, 145, 146, 150, 151];
 export const LEGENDARY_CHANCE = 0.05;
+// ตัวตำนานออกได้เฉพาะช่องโซนนี้
+export const LEGENDARY_ZONE = 5;
 
 export const HEAL_RATE = 0.2;
 export const BATTLE_PENALTY_RATE = 0.1;
@@ -44,3 +46,4 @@ export const STARTERS = { bulbasaur: 1, charmander: 4, squirtle: 7, pikachu: 25 
 // ก้าวเดินขั้นต่ำต่อตา และเพดานก้าวของ Ranger ตอนขยับ ±1 (Plan Decisions ข้อ 5)
 export const MIN_STEPS = 1;
 export const RANGER_MAX_STEPS = 7;
+export const RANGER_ADJUST_STEP = 1;

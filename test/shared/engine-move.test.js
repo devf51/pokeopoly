@@ -306,6 +306,7 @@ test('DONE works in shop and center only, SKIP only in catch', () => {
   let { state, ctx } = newGame();
   assert.throws(() => act(state, ctx, 'p1', { type: 'DONE' }), { code: 'INVALID_ACTION' });
   assert.throws(() => act(state, ctx, 'p1', { type: 'SKIP' }), { code: 'INVALID_ACTION' });
+  state.players[1].position = 1; // ไม่อยู่ช่องเดียวกับ p1 จะได้ไม่เข้า step 'challenge'
   state.turn.step = 'center';
   ({ state } = act(state, ctx, 'p1', { type: 'DONE' }));
   assert.equal(state.turn.playerId, 'p2');

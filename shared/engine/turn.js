@@ -1,5 +1,6 @@
 import { BOARD_SIZE, FIRST_FINISHER_BONUS, LAPS_TO_FINISH } from '../constants.js';
 import { finalTotals, salaryFor } from '../economy.js';
+import { challengeTargets } from './challenge.js';
 
 const STEP_BY_TILE = { start: 'shop', mart: 'shop', center: 'center', wild: 'catch' };
 
@@ -42,9 +43,17 @@ export function enterTile(state, events, ctx) {
   state.turn.step = STEP_BY_TILE[tile.type];
 }
 
-// เรียกหลังจบหน้าที่ของช่อง Task 7 จะเพิ่มการเช็กท้าสู้ตรงนี้
+// เรียกหลังจบหน้าที่ของช่อง: ถ้ามีคนให้ท้าได้ไป step 'challenge' ไม่งั้นจบตา
+// ล้าง roll/ball ที่ค้างจากการจับ ไม่ให้รั่วไปยัง challenge/defend
 export function afterTile(state, events) {
-  endTurn(state, events);
+  const player = state.players.find(p => p.id === state.turn.playerId);
+  if (challengeTargets(state, player).length === 0) {
+    endTurn(state, events);
+    return;
+  }
+  state.turn.step = 'challenge';
+  state.turn.roll = null;
+  state.turn.ball = null;
 }
 
 // ไปผู้เล่นถัดไปที่ยังไม่เข้าเส้นชัย ถ้าทุกคนเข้าเส้นชัยแล้วจบเกม

@@ -1,7 +1,8 @@
-import { MIN_STEPS, RANGER_MAX_STEPS, SQUIRTLE_MAX_WARP } from '../constants.js';
+import { MIN_STEPS, RANGER_ADJUST_STEP, RANGER_MAX_STEPS, SQUIRTLE_MAX_WARP } from '../constants.js';
 import { rollD6 } from '../rng.js';
 import { GameError } from './errors.js';
 import { requireClassUse, requireStarter } from './abilities.js';
+import { CHALLENGE_HANDLERS, DEFEND_HANDLERS } from './challenge.js';
 import { CATCH_FAILED_HANDLERS, CATCH_HANDLERS, CENTER_HANDLERS, SHOP_HANDLERS } from './tile-actions.js';
 import { afterTile, enterTile, moveBy } from './turn.js';
 
@@ -46,7 +47,7 @@ function rangerReroll(state, player, action, events, ctx) {
 
 function rangerAdjust(state, player, action, events) {
   const { delta } = action;
-  if (delta !== 1 && delta !== -1) {
+  if (!Number.isInteger(delta) || Math.abs(delta) !== RANGER_ADJUST_STEP) {
     throw new GameError('INVALID_ACTION', 'Ranger ขยับได้เฉพาะ +1 หรือ -1 ช่อง');
   }
   requireClassUse(player, 'ranger');
@@ -82,10 +83,12 @@ export const HANDLERS = {
   'catch-failed': CATCH_FAILED_HANDLERS,
   shop: { ...SHOP_HANDLERS, DONE: finishTile },
   center: { ...CENTER_HANDLERS, DONE: finishTile },
+  challenge: CHALLENGE_HANDLERS,
+  defend: DEFEND_HANDLERS,
 };
 
-// ผู้ที่ต้องเป็นฝ่ายทำ action ของ step นั้น (ปกติเจ้าของตา; step 'defend' ของ Task 7 เป็นฝ่ายถูกท้า)
-function expectedActor(state) {
+// ผู้ที่ต้องเป็นฝ่ายทำ action ของ step นั้น (ปกติเจ้าของตา; step 'defend' เป็นฝ่ายถูกท้า)
+export function actorOf(state) {
   if (state.turn.step === 'defend') return state.turn.battle?.defenderId;
   return state.turn.playerId;
 }
@@ -93,7 +96,7 @@ function expectedActor(state) {
 // ทางเดียวที่เปลี่ยนสถานะเกม: clone ก่อนแก้ ถ้าผิดกติกาโยน GameError และ state เดิมไม่ถูกแตะ
 export function applyAction(state, actorId, action, ctx) {
   if (state.phase !== 'playing') throw new GameError('INVALID_ACTION', 'เกมจบแล้ว');
-  if (actorId !== expectedActor(state)) throw new GameError('NOT_YOUR_TURN', 'ยังไม่ถึงตาของคุณ');
+  if (actorId !== actorOf(state)) throw new GameError('NOT_YOUR_TURN', 'ยังไม่ถึงตาของคุณ');
   const handlers = HANDLERS[state.turn.step] ?? {};
   const type = action?.type;
   if (typeof type !== 'string' || !Object.hasOwn(handlers, type)) {

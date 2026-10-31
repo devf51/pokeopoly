@@ -1,7 +1,5 @@
-import { LEGENDARY_CHANCE, LEGENDARY_IDS } from '../constants.js';
+import { LEGENDARY_CHANCE, LEGENDARY_IDS, LEGENDARY_ZONE } from '../constants.js';
 import { pick } from '../rng.js';
-
-const LEGENDARY_ZONE = 5;
 
 // ตัวตำนานที่ยังออกได้ = ยังไม่ถูกจับ และไม่ได้รออยู่บนช่องใดของกระดาน (Plan Decisions ข้อ 4)
 function availableLegendaries(state) {
