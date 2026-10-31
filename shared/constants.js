@@ -27,6 +27,7 @@ export const LEGENDARY_CHANCE = 0.05;
 
 export const HEAL_RATE = 0.2;
 export const BATTLE_PENALTY_RATE = 0.1;
+export const TYPE_ADVANTAGE_BONUS = 1;
 
 export const CLASS_USES = 2;
 export const PROFESSOR_VISION = 6;
