@@ -49,9 +49,14 @@ test('every step shows exactly the actions of the Actions-per-step table', () =>
     assert.deepEqual([...new Set(Object.keys(HANDLERS[step]))].sort(), [...types].sort(), `engine handlers of ${step}`);
   }
 
+  // ความสามารถแสดงเฉพาะของคลาส/ตัวเริ่มต้นของตัวเอง จึงรวมปุ่มจาก 4 ชุดผู้เล่นให้ครอบคลุมทุกความสามารถ
+  const CONFIGS = [['ranger', 'squirtle'], ['professor', 'pikachu'], ['catcher', 'bulbasaur'], ['merchant', 'charmander']];
   for (const step of Object.keys(expected)) {
+    const seen = new Set();
+    for (const [cls, starter] of CONFIGS) {
     const { state } = setup({
       step,
+      players: [{ ...PLAYERS[0], cls, starter }, PLAYERS[1]],
       position: step === 'shop' ? 0 : step === 'center' ? 11 : 1,
       tweak(s) {
         s.turn.roll = 3;
@@ -64,7 +69,9 @@ test('every step shows exactly the actions of the Actions-per-step table', () =>
     const actorId = step === 'defend' ? 'p2' : 'p1';
     const m = model(state, actorId);
     assert.equal(m.mine, true, step);
-    assert.deepEqual([...new Set(actionTypes(m))].sort(), [...expected[step]].sort(), `buttons of ${step}`);
+    actionTypes(m).forEach(t => seen.add(t));
+    }
+    assert.deepEqual([...seen].sort(), [...expected[step]].sort(), `buttons of ${step}`);
   }
 });
 
@@ -149,7 +156,7 @@ test('catch step: encounter info, target and ball buttons', () => {
   assert.match(m.summary.join(' '), /Catcher/);
 });
 
-test('catch step with a legendary: Bulbasaur is disabled with a Thai reason, other starters get the starter reason', () => {
+test('catch step with a legendary: Bulbasaur is disabled with a Thai reason; other starters do not see it', () => {
   const legendary = LEGENDARY_IDS[0];
   const { state } = setup({ step: 'catch', position: 29, tweak: s => { s.board[29].dexId = legendary; } });
   const bulb = one(model(state), 'BULBASAUR_CATCH');
@@ -161,12 +168,12 @@ test('catch step with a legendary: Bulbasaur is disabled with a Thai reason, oth
 
   // ไม่ใช่ Bulbasaur / ใช้ไปแล้ว
   const other = setup({ step: 'catch', players: [{ ...PLAYERS[0], starter: 'pikachu' }, PLAYERS[1]] });
-  assert.match(one(model(other.state), 'BULBASAUR_CATCH').reason, /Bulbasaur/);
+  assert.equal(byType(model(other.state), 'BULBASAUR_CATCH').length, 0);
   const used = setup({ step: 'catch', tweak: s => { s.players[0].starterUsed = true; } });
   assert.match(one(model(used.state), 'BULBASAUR_CATCH').reason, /ไปแล้ว/);
 });
 
-test('roll step: Squirtle warp 1-6 with destinations, disabled with one reason for others', () => {
+test('roll step: Squirtle warp 1-6 with destinations; hidden for other starters', () => {
   const sq = setup({ step: 'roll', players: [{ ...PLAYERS[0], starter: 'squirtle' }, PLAYERS[1]] });
   const warps = byType(model(sq.state), 'SQUIRTLE_WARP');
   assert.deepEqual(warps.map(w => w.action.steps), [1, 2, 3, 4, 5, 6]);
@@ -175,12 +182,12 @@ test('roll step: Squirtle warp 1-6 with destinations, disabled with one reason f
 
   const other = setup({ step: 'roll' });
   const m = model(other.state);
-  assert.ok(byType(m, 'SQUIRTLE_WARP').every(w => w.disabled && w.showReason === false));
-  assert.match(m.sections.find(s => s.id === 'warp').note, /Squirtle/);
+  assert.equal(byType(m, 'SQUIRTLE_WARP').length, 0);
+  assert.equal(m.sections.find(s => s.id === 'warp'), undefined);
   assert.equal(one(m, 'ROLL').disabled, false);
 });
 
-test('move step: confirm shows the pending steps; Ranger bounds and class reasons', () => {
+test('move step: confirm shows the pending steps; Ranger bounds; no Ranger/Pikachu buttons for others', () => {
   const rg = setup({ step: 'move', players: [{ ...PLAYERS[0], cls: 'ranger' }, PLAYERS[1]], tweak: s => { s.turn.roll = 7; } });
   let m = model(rg.state);
   assert.equal(one(m, 'CONFIRM_MOVE').label, 'เดิน 7 ก้าว');
@@ -198,8 +205,9 @@ test('move step: confirm shows the pending steps; Ranger bounds and class reason
 
   const catcher = setup({ step: 'move', tweak: s => { s.turn.roll = 3; } });
   m = model(catcher.state);
-  assert.ok(byType(m, 'RANGER_REROLL').every(c => c.disabled && /Ranger/.test(c.reason)));
-  assert.ok(byType(m, 'PIKACHU_REROLL').every(c => c.disabled && /Pikachu/.test(c.reason)));
+  assert.equal(byType(m, 'RANGER_REROLL').length, 0);
+  assert.equal(byType(m, 'RANGER_ADJUST').length, 0);
+  assert.equal(byType(m, 'PIKACHU_REROLL').length, 0);
 });
 
 test('catch-failed step: shows the missed roll and ball, abilities by class/starter', () => {
@@ -214,8 +222,7 @@ test('catch-failed step: shows the missed roll and ball, abilities by class/star
   assert.equal(one(m, 'PIKACHU_REROLL').disabled, false);
   assert.equal(one(m, 'ACCEPT').disabled, false);
   const plain = model(setup({ step: 'catch-failed', tweak: s => { s.turn.ball = 'poke'; s.turn.roll = 2; } }).state);
-  assert.equal(one(plain, 'PROFESSOR_REROLL').disabled, true);
-  assert.equal(one(plain, 'PIKACHU_REROLL').disabled, true);
+  assert.deepEqual(actionTypes(plain), ['ACCEPT']);
 });
 
 test('shop: prices (Merchant discount), quantity, money and the start-only sell rule', () => {
@@ -294,8 +301,7 @@ test('challenge: targets, fighters, Charmander toggle and the resulting action',
   const challenge = one(m, 'CHALLENGE');
   assert.deepEqual(challenge.action, { type: 'CHALLENGE', targetId: 'p2', uid: 1, charmander: false });
   assert.equal(challenge.disabled, false);
-  const toggle = m.sections.find(s => s.kind === 'toggle');
-  assert.match(toggle.reason, /Charmander/); // Ash เป็น Bulbasaur
+  assert.equal(m.sections.find(s => s.kind === 'toggle'), undefined); // Ash เป็น Bulbasaur ไม่เห็นตัวเลือก Charmander
 
   m = model(state, 'p1', { targetId: 'p3', uid: 50, charmander: true });
   assert.deepEqual(one(m, 'CHALLENGE').action, { type: 'CHALLENGE', targetId: 'p3', uid: 50, charmander: false });
@@ -334,6 +340,58 @@ test('defend: the defender picks among healthy mons; sees the attacker mon; fain
   const none = model(state, 'p2');
   assert.equal(one(none, 'DEFEND').disabled, true);
   assert.match(one(none, 'DEFEND').reason, /หมดสภาพ/);
+});
+
+test('abilities of other classes and starters are hidden', () => {
+  const mc = [{ ...PLAYERS[0], cls: 'merchant', starter: 'charmander' }, PLAYERS[1]];
+  const roll = model(setup({ step: 'roll', players: mc }).state);
+  assert.equal(byType(roll, 'SQUIRTLE_WARP').length, 0);
+  const move = model(setup({ step: 'move', players: mc, tweak: s => { s.turn.roll = 3; } }).state);
+  assert.deepEqual(actionTypes(move), ['CONFIRM_MOVE']);
+  assert.equal(move.sections.find(s => s.title === 'ความสามารถพิเศษ'), undefined);
+  const caught = model(setup({ step: 'catch', players: mc }).state);
+  assert.equal(byType(caught, 'BULBASAUR_CATCH').length, 0);
+  const failed = model(setup({ step: 'catch-failed', players: mc, tweak: s => { s.turn.ball = 'poke'; s.turn.roll = 1; } }).state);
+  assert.deepEqual(actionTypes(failed), ['ACCEPT']);
+
+  const bulb = [{ ...PLAYERS[0], cls: 'merchant', starter: 'bulbasaur' }, PLAYERS[1]];
+  const ch = model(setup({ step: 'challenge', players: bulb, tweak: s => { s.players[1].position = 1; } }).state);
+  assert.equal(ch.sections.find(s => s.kind === 'toggle'), undefined);
+  const df = setup({
+    step: 'defend', players: [PLAYERS[0], { ...PLAYERS[1], starter: 'squirtle' }],
+    tweak: s => { s.players[1].position = 1; s.turn.battle = { attackerId: 'p1', defenderId: 'p2', attackerUid: 1, attackerCharmander: false }; },
+  });
+  assert.equal(model(df.state, 'p2').sections.find(s => s.kind === 'toggle'), undefined);
+});
+
+test('own abilities that are used up stay visible and disabled', () => {
+  const sq = setup({ step: 'roll', players: [{ ...PLAYERS[0], starter: 'squirtle' }, PLAYERS[1]], tweak: s => { s.players[0].starterUsed = true; } });
+  const m = model(sq.state);
+  const warps = byType(m, 'SQUIRTLE_WARP');
+  assert.equal(warps.length, 6);
+  assert.ok(warps.every(w => w.disabled));
+  const warp = m.sections.find(s => s.id === 'warp');
+  assert.equal(warp.noteIsReason, true);
+  assert.match(warp.note, /ไปแล้ว/);
+
+  const rg = setup({ step: 'move', players: [{ ...PLAYERS[0], cls: 'ranger' }, PLAYERS[1]], tweak: s => { s.turn.roll = 3; s.players[0].classUses = 0; } });
+  const ranger = controls(model(rg.state)).filter(c => c.key.startsWith('ranger-'));
+  assert.equal(ranger.length, 3);
+  assert.ok(ranger.every(c => c.disabled && c.reason === 'ใช้ความสามารถครบ 2 ครั้งแล้ว'));
+});
+
+test('skip sits with the throw buttons; ball buttons explain the bonus', () => {
+  const m = model(setup({ step: 'catch' }).state);
+  const throwSection = m.sections.find(s => s.id === 'throw');
+  assert.deepEqual(throwSection.items.map(i => i.action.type), ['THROW', 'THROW', 'THROW', 'SKIP']);
+  assert.equal(throwSection.items[3].label, 'ไม่จับ ข้ามไป');
+  assert.ok(throwSection.items.find(i => i.key === 'throw-great').detail.endsWith('เพิ่มโอกาสจับ (+1 แต้มตอนทอยจับ)'));
+
+  const shop = model(setup({ step: 'shop', position: 4 }).state, 'p1', { qty: 1 });
+  const buy = key => controls(shop).find(c => c.key === key).detail;
+  assert.ok(buy('buy-ultra').startsWith('เพิ่มโอกาสจับมากขึ้น (+2 แต้มตอนทอยจับ)'));
+  assert.ok(buy('buy-great').startsWith('เพิ่มโอกาสจับ (+1 แต้มตอนทอยจับ)'));
+  assert.ok(buy('buy-poke').startsWith('บอลธรรมดา'));
 });
 
 test('destinationIndex matches what the engine moveBy does', () => {

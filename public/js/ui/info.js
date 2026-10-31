@@ -1,7 +1,7 @@
 // ข้อมูลสำหรับแสดงผล (ชื่อไทย คำอธิบาย) ตัวเลขดึงจาก shared/constants.js ไม่เขียนซ้ำ
 // import แบบ relative (../../../shared) ได้ URL เดียวกับ /shared ในเบราว์เซอร์ และ Node ใช้เทสต์โมดูลนี้ได้
 import {
-  CATCHER_BONUS, CLASS_USES, MERCHANT_DISCOUNT, MERCHANT_SALARY, PROFESSOR_VISION,
+  BALLS, CATCHER_BONUS, CLASS_USES, MERCHANT_DISCOUNT, MERCHANT_SALARY, PROFESSOR_VISION,
   SQUIRTLE_MAX_WARP, STARTERS,
 } from '../../../shared/constants.js';
 
@@ -35,10 +35,11 @@ export const STARTER_INFO = {
 
 export const STARTER_DEX = STARTERS;
 
+// desc: บอกว่าบอลช่วยอะไร แสดงทั้งตอนซื้อและตอนโยน (ผู้เล่นบางคนไม่เข้าใจ "+1 +2")
 export const BALL_INFO = {
-  poke: { name: 'Poké Ball' },
-  great: { name: 'Great Ball' },
-  ultra: { name: 'Ultra Ball' },
+  poke: { name: 'Poké Ball', desc: 'บอลธรรมดา' },
+  great: { name: 'Great Ball', desc: `เพิ่มโอกาสจับ (+${BALLS.great.bonus} แต้มตอนทอยจับ)` },
+  ultra: { name: 'Ultra Ball', desc: `เพิ่มโอกาสจับมากขึ้น (+${BALLS.ultra.bonus} แต้มตอนทอยจับ)` },
 };
 
 // ข้อความของแต่ละ step (ตาราง Actions ต่อ step)

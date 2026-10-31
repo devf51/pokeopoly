@@ -63,6 +63,11 @@ const buttons = (id, items, extra = {}) => ({ kind: 'buttons', id, items, ...ext
 
 const healthy = player => player.mons.filter(m => !m.fainted);
 
+// ความสามารถแสดงเฉพาะเมื่อเป็นของคลาส/ตัวเริ่มต้นของเราเอง (ของคนอื่นซ่อนไปเลย ไม่ให้ปุ่มที่กดไม่ได้ดันปุ่มจริงลงไป)
+// ถ้าเป็นของเราแต่ใช้หมดแล้ว ยังแสดงแบบ disabled พร้อมเหตุผล
+const owns = (me, who) => me.cls === who || me.starter === who;
+const ifOwn = (me, who, items) => (owns(me, who) ? items : []);
+
 function monName(pokedexById, dexId) {
   return pokedexById.get(dexId)?.name ?? '?';
 }
@@ -88,11 +93,11 @@ function rollStep(game, me, pokedexById) {
   return {
     sections: [
       buttons('main', [control('roll', 'ทอยลูกเต๋า', { type: 'ROLL' }, { variant: 'primary' })]),
-      buttons('warp', WARP_STEPS.map(n => control(
+      buttons('warp', ifOwn(me, 'squirtle', WARP_STEPS.map(n => control(
         `warp-${n}`, `${n} ช่อง`,
         { type: 'SQUIRTLE_WARP', steps: n },
         { reason: warpReason, showReason: false, detail: `ไป${tileLabel(game, destinationIndex(me, n), pokedexById)}` },
-      )), {
+      ))), {
         title: 'วาร์ปด้วย Squirtle แทนการทอย',
         note: warpReason ?? 'เลือกจำนวนช่องที่จะวาร์ปไปข้างหน้า (ใช้ได้ครั้งเดียวต่อเกม)',
         noteIsReason: Boolean(warpReason),
@@ -111,6 +116,7 @@ function moveStep(game, me) {
     sections: [
       buttons('main', [control('confirm', `เดิน ${roll} ก้าว`, { type: 'CONFIRM_MOVE' }, { variant: 'primary' })]),
       buttons('abilities', [
+        ...ifOwn(me, 'ranger', [
         control('ranger-reroll', 'Ranger: ทอยเดินใหม่', { type: 'RANGER_REROLL' }, { reason: rangerReason, detail: uses }),
         control('ranger-up', `Ranger: ขยับ +${RANGER_ADJUST_STEP}`, { type: 'RANGER_ADJUST', delta: RANGER_ADJUST_STEP }, {
           reason: rangerReason ?? (roll >= RANGER_MAX_STEPS ? `ก้าวมากสุดแล้ว (${RANGER_MAX_STEPS} ก้าว)` : null), detail: uses,
@@ -118,7 +124,10 @@ function moveStep(game, me) {
         control('ranger-down', `Ranger: ขยับ −${RANGER_ADJUST_STEP}`, { type: 'RANGER_ADJUST', delta: -RANGER_ADJUST_STEP }, {
           reason: rangerReason ?? (roll <= MIN_STEPS ? `ก้าวน้อยสุดแล้ว (${MIN_STEPS} ก้าว)` : null), detail: uses,
         }),
-        control('pikachu-reroll', 'Pikachu: ทอยเดินใหม่', { type: 'PIKACHU_REROLL' }, { reason: starterReason(me, 'pikachu') }),
+        ]),
+        ...ifOwn(me, 'pikachu', [
+          control('pikachu-reroll', 'Pikachu: ทอยเดินใหม่', { type: 'PIKACHU_REROLL' }, { reason: starterReason(me, 'pikachu') }),
+        ]),
       ], { title: 'ความสามารถพิเศษ', layout: 'list' }),
     ],
   };
@@ -148,7 +157,7 @@ function catchStep(game, me, pokedexById) {
     `throw-${ball}`, `โยน ${BALL_INFO[ball].name}`, { type: 'THROW', ball },
     {
       variant: 'primary',
-      detail: `เหลือ ${me.balls[ball]} ลูก · บวก ${BALLS[ball].bonus}`,
+      detail: `เหลือ ${me.balls[ball]} ลูก · ${BALL_INFO[ball].desc}`,
       reason: me.balls[ball] < 1 ? `ไม่มี ${BALL_INFO[ball].name} เหลือ` : null,
     },
   ));
@@ -158,11 +167,13 @@ function catchStep(game, me, pokedexById) {
     summary,
     sections: [
       encounter,
-      buttons('throw', throws, { title: 'เลือกบอลที่จะโยน (โยนได้ครั้งเดียว)', layout: 'list' }),
-      buttons('other', [
+      buttons('other', ifOwn(me, 'bulbasaur', [
         control('bulbasaur', 'Bulbasaur: จับสำเร็จแน่นอน', { type: 'BULBASAUR_CATCH' }, { reason: bulbaReason }),
-        control('skip', 'ไม่จับ ข้ามไป', { type: 'SKIP' }),
-      ], { layout: 'list' }),
+      ]), { layout: 'list' }),
+      // ปุ่มไม่จับอยู่แถวเดียวกับปุ่มโยน (ส่วนที่ติดล่างการ์ด) จะได้ไม่ต้องหา
+      buttons('throw', [...throws, control('skip', 'ไม่จับ ข้ามไป', { type: 'SKIP' })], {
+        title: 'เลือกบอลที่จะโยน (โยนได้ครั้งเดียว)', layout: 'list',
+      }),
     ].filter(Boolean),
   };
 }
@@ -176,10 +187,10 @@ function catchFailedStep(game, me, pokedexById) {
     sections: [
       encounter,
       buttons('retry', [
-        control('professor', 'Professor: ทอยจับใหม่', { type: 'PROFESSOR_REROLL' }, {
-          reason: classReason(me, 'professor'), detail: me.cls === 'professor' ? `เหลือ ${me.classUses} ครั้ง` : undefined,
-        }),
-        control('pikachu', 'Pikachu: ทอยจับใหม่', { type: 'PIKACHU_REROLL' }, { reason: starterReason(me, 'pikachu') }),
+        ...ifOwn(me, 'professor', [control('professor', 'Professor: ทอยจับใหม่', { type: 'PROFESSOR_REROLL' }, {
+          reason: classReason(me, 'professor'), detail: `เหลือ ${me.classUses} ครั้ง`,
+        })]),
+        ...ifOwn(me, 'pikachu', [control('pikachu', 'Pikachu: ทอยจับใหม่', { type: 'PIKACHU_REROLL' }, { reason: starterReason(me, 'pikachu') })]),
         control('accept', 'ยอมรับผล (โปเกม่อนหนีไป)', { type: 'ACCEPT' }, { variant: 'primary' }),
       ], { title: 'ทอยจับใหม่ได้ด้วยบอลลูกเดิม ไม่เสียบอลเพิ่ม', layout: 'list' }),
     ].filter(Boolean),
@@ -194,7 +205,7 @@ function shopStep(game, me, pokedexById, selection) {
     const price = ballPrice(ball, me.cls);
     const cost = price * qty;
     return control(`buy-${ball}`, `ซื้อ ${BALL_INFO[ball].name} × ${qty}`, { type: 'BUY', ball, qty }, {
-      detail: `${price} ต่อลูก · รวม ${cost} · มี ${me.balls[ball]} ลูก`,
+      detail: `${BALL_INFO[ball].desc} · ${price} ต่อลูก · รวม ${cost} · มี ${me.balls[ball]} ลูก`,
       reason: me.money < cost ? `เงินไม่พอ (ต้องใช้ ${cost} มี ${me.money})` : null,
     });
   });
@@ -271,15 +282,15 @@ function challengeStep(game, me, pokedexById, selection, targets, fighters, char
         })),
       },
       { kind: 'pick', field: 'uid', title: 'เลือกโปเกม่อนของคุณ', selected: selection.uid, options: fighterOptions(fighters, pokedexById) },
-      {
+      owns(me, 'charmander') ? {
         kind: 'toggle', field: 'charmander', label: 'ใช้ความสามารถ Charmander: ชนะอัตโนมัติ',
         checked: selection.charmander, reason: charmanderReason,
-      },
+      } : null,
       buttons('main', [
         control('challenge', 'ท้าสู้!', action, { variant: 'primary', reason: none }),
         control('skip', 'ไม่ท้า จบตา', { type: 'SKIP' }),
       ], { layout: 'list' }),
-    ],
+    ].filter(Boolean),
   };
 }
 
@@ -294,10 +305,10 @@ function defendStep(game, me, pokedexById, selection, fighters, charmanderReason
     sections: [
       attackerMon ? { kind: 'foe', dexId: attackerMon.dexId, name: monName(pokedexById, attackerMon.dexId), detail: `ธาตุ${typesText(pokedexById, attackerMon.dexId)}` } : null,
       { kind: 'pick', field: 'uid', title: 'เลือกโปเกม่อนของคุณ', selected: selection.uid, options: fighterOptions(fighters, pokedexById) },
-      {
+      owns(me, 'charmander') ? {
         kind: 'toggle', field: 'charmander', label: 'ใช้ความสามารถ Charmander: ชนะอัตโนมัติ',
         checked: selection.charmander, reason: charmanderReason,
-      },
+      } : null,
       buttons('main', [control('defend', 'สู้!', action, { variant: 'primary', reason: none })]),
     ].filter(Boolean),
   };
@@ -354,7 +365,9 @@ export function buildActionModel(game, myId, pokedexById, ui = {}) {
     case 'defend': body = defendStep(game, me, pokedexById, selection, fighters, charmanderReason); break;
     default: body = { sections: [] };
   }
-  return { ...base, summary: [], ...body, selection };
+  // section ปุ่มที่ว่างหลังซ่อนความสามารถของคนอื่น ไม่ต้องแสดงหัวข้อค้างไว้
+  const sections = body.sections.filter(sec => sec.kind !== 'buttons' || sec.items.length > 0);
+  return { ...base, summary: [], ...body, sections, selection };
 }
 
 // ใช้ในเทสต์ / ตรวจว่าตารางแผนหลักครบ: รายชื่อ action type ที่แต่ละ step อาจแสดง

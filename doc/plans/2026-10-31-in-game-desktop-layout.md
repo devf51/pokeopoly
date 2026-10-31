@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** บนจอ ≥ 768px ย้ายการ์ดปุ่มคำสั่งไปไว้กลางกระดานใต้ลูกเต๋า ให้ปุ่มหลักอยู่ในจอเสมอโดยไม่ต้องเลื่อน และจัดแผงขวาให้เหลือแค่ข้อมูล
+**Goal:** บนจอ ≥ 768px ย้ายการ์ดปุ่มคำสั่งไปไว้กลางกระดานใต้ลูกเต๋า ให้ปุ่มหลักอยู่ในจอเสมอโดยไม่ต้องเลื่อน และจัดแผงขวาให้เหลือแค่ข้อมูล; ทุกจอ: ซ่อนปุ่มความสามารถที่ไม่ใช่ของเรา ปุ่มไม่จับอยู่แถวปุ่มโยนบอล และบอกว่าบอลช่วยอะไร
 
-**Architecture:** เพิ่มฟังก์ชันบริสุทธิ์ `splitActionSections` แยก section ของโมเดลปุ่มเป็น body (เลื่อนได้) กับ footer (ปุ่มหลัก ติดล่างการ์ด) แล้ว `actions.js` วาดการ์ดเป็นสองส่วน `game.js` ย้าย element `#action-area` อันเดียวไปมาระหว่างกลางกระดาน (คอม) กับแผง (มือถือ) ด้วย `matchMedia` และซ่อนไว้ระหว่างแอนิเมชัน `panel.js` เรียงการ์ดผู้เล่นของเราขึ้นก่อน
+**Architecture:** `action-model.js` กรองปุ่มความสามารถตามคลาส/ตัวเริ่มต้นของผู้เล่นและเพิ่มคำอธิบายบอลจาก `BALL_INFO` จากนั้นเพิ่มฟังก์ชันบริสุทธิ์ `splitActionSections` แยก section ของโมเดลปุ่มเป็น body (เลื่อนได้) กับ footer (ปุ่มหลัก ติดล่างการ์ด) แล้ว `actions.js` วาดการ์ดเป็นสองส่วน `game.js` ย้าย element `#action-area` อันเดียวไปมาระหว่างกลางกระดาน (คอม) กับแผง (มือถือ) ด้วย `matchMedia` และซ่อนไว้ระหว่างแอนิเมชัน `panel.js` เรียงการ์ดผู้เล่นของเราขึ้นก่อน
 
 **Tech Stack:** HTML/CSS/JS ธรรมดา (ES modules ไม่มี build), `node:test` + `node:assert/strict`
 
@@ -13,9 +13,11 @@
 ## Global Constraints
 
 - ไม่มีขั้นตอน build ไม่เพิ่ม dependency
-- ไม่แตะ `shared/`, `server/` และไม่เปลี่ยนตรรกะ/ข้อความใน `public/js/ui/action-model.js`; `test/public/action-model.test.js` ต้องผ่านโดยไม่แก้
+- ไม่แตะ `shared/`, `server/`; action ที่ปุ่มส่งไปเซิร์ฟเวอร์ยังเป็นชนิดและรูปแบบเดิม (กติกาไม่เปลี่ยน กดไม่จับแล้วโปเกม่อนตัวเดิมยังอยู่ในช่อง)
+- `action-model.js` เปลี่ยนได้เฉพาะตาม Task 1; เทสต์ใน `test/public/action-model.test.js` ที่ขัดกับการซ่อนปุ่มให้แก้ตาม Task 1 เท่านั้น
+- ข้อความบอล (ตรงตัว): Poké Ball `บอลธรรมดา` / Great Ball `เพิ่มโอกาสจับ (+1 แต้มตอนทอยจับ)` / Ultra Ball `เพิ่มโอกาสจับมากขึ้น (+2 แต้มตอนทอยจับ)` — ตัวเลขมาจาก `BALLS[ball].bonus`
 - จุดตัดคอม/มือถือ: `(min-width: 768px)` ตรงกับ media query เดิมใน `style.css`
-- มือถือ (< 768px) หน้าตาและลำดับเหมือนเดิม
+- มือถือ (< 768px) ตำแหน่งและลำดับเหมือนเดิม (เนื้อหาปุ่มเปลี่ยนตาม Task 1 ได้)
 - ขนาดกระดานคงเดิม: `.board-wrap { width: min(100%, calc(100dvh - 2rem)) }`
 - ข้อความ UI ภาษาไทย คอมเมนต์ในโค้ดภาษาไทยตามไฟล์เดิม
 - หน้าผลการแข่งตอนจบเกมอยู่ในแผงขวาเหมือนเดิม
@@ -23,20 +25,68 @@
 
 ## Review Focus
 
-1. **รายการยาว** (ศูนย์รักษาที่มีโปเกม่อนหมดสภาพ 6+ ตัว / ขายที่จุดเริ่มต้นมี 10+ ตัว) → body เลื่อนในการ์ด ปุ่ม "เสร็จแล้ว ไปต่อ" ยังเห็นอยู่ในจอ — ตรวจใน Task 4 ขั้น 3
-2. **update มาติดๆ กัน** (คิวข้ามแอนิเมชัน หรือแท็บถูกซ่อน `document.hidden`) → การ์ดคำสั่งต้องไม่ค้างซ่อน: `applyState` ตั้ง `hidden = false` ทุกครั้ง — Task 3 ขั้น 2
-3. **ย่อ/ขยายหน้าต่างข้าม 768px ระหว่างเลือกค่า** (เช่นเลือกจำนวนบอล 5 ลูกไว้) → การ์ดย้ายที่โดยค่าที่เลือกยังอยู่ เพราะย้าย element เดิม ไม่สร้างใหม่ — Task 4 ขั้น 4
-4. **กด Tab ไล่ปุ่มใน body** → ปุ่มที่โฟกัสไม่ถูก footer บัง (`scroll-padding-bottom`) — Task 4 ขั้น 3
-5. **เซิร์ฟเวอร์ตอบ error** (เช่นเงินไม่พอ) → ข้อความ `.form-error` เห็นได้โดยไม่ต้องเลื่อน: วางไว้ใน footer เหนือปุ่ม — Task 1 test + Task 2
+1. **รายการยาว** (ศูนย์รักษาที่มีโปเกม่อนหมดสภาพ 6+ ตัว / ขายที่จุดเริ่มต้นมี 10+ ตัว) → body เลื่อนในการ์ด ปุ่ม "เสร็จแล้ว ไปต่อ" ยังเห็นอยู่ในจอ — ตรวจใน Task 5 ขั้น 3
+2. **update มาติดๆ กัน** (คิวข้ามแอนิเมชัน หรือแท็บถูกซ่อน `document.hidden`) → การ์ดคำสั่งต้องไม่ค้างซ่อน: `applyState` ตั้ง `hidden = false` ทุกครั้ง — Task 4 ขั้น 2
+3. **ผู้เล่นที่ไม่มีความสามารถใน step นั้นเลย** (เช่น Merchant + Charmander ตอนยืนยันเดิน) → ไม่มีหัวข้อ "ความสามารถพิเศษ" ว่างๆ ค้าง: section ที่ไม่มีปุ่มเหลือต้องถูกตัดทิ้ง — Task 1 ขั้น 1
+4. **ความสามารถของเราที่ใช้ครบแล้ว** (Squirtle วาร์ปไปแล้ว / Ranger เหลือ 0) → ยังเห็นปุ่มกดไม่ได้พร้อมเหตุผล ไม่หายไปเฉยๆ — Task 1 ขั้น 1
+5. **เซิร์ฟเวอร์ตอบ error** (เช่นเงินไม่พอ) → ข้อความ `.form-error` เห็นได้โดยไม่ต้องเลื่อน: วางไว้ใน footer เหนือปุ่ม — Task 3
 
 ---
 
-### Task 1: แยก section เป็น body / footer
+### Task 1: ซ่อนความสามารถที่ไม่ใช่ของเรา ย้ายปุ่มไม่จับ และอธิบายบอล
+
+**Files:**
+- Modify: `public/js/ui/info.js` (`BALL_INFO`)
+- Modify: `public/js/ui/action-model.js` (`rollStep`, `moveStep`, `catchStep`, `catchFailedStep`, `shopStep`, `challengeStep`, `defendStep`)
+- Test: `test/public/action-model.test.js`
+- Also commit: `doc/superpowers/specs/2026-10-31-in-game-desktop-layout-design.md`, `doc/plans/2026-10-31-in-game-desktop-layout.md`
+
+**Interfaces:**
+- Produces: `BALL_INFO[ball] = { name, desc }` (desc ตาม Global Constraints); โมเดลปุ่ม:
+  - ปุ่ม/section/toggle ของความสามารถแสดงเฉพาะเมื่อ `me.cls` หรือ `me.starter` ตรงกับเจ้าของความสามารถ (Squirtle วาร์ป, Ranger ×3, Pikachu ทอยใหม่ทั้งตอนเดินและตอนจับพลาด, Bulbasaur, Professor, toggle Charmander); ถ้าตรงแต่ใช้หมดแล้ว แสดงแบบ disabled พร้อม reason เดิม
+  - section `buttons` ที่ items ว่างหลังกรอง ไม่ใส่ในผลลัพธ์
+  - catch step: section `throw` = ปุ่มโยน 3 ปุ่ม + `control('skip', 'ไม่จับ ข้ามไป', { type: 'SKIP' })` เป็นปุ่มสุดท้าย; section `other` เหลือเฉพาะ Bulbasaur (ถ้ามี)
+  - detail ปุ่มโยน: `เหลือ ${n} ลูก · ${desc}`; detail ปุ่มซื้อ: `${desc} · ${price} ต่อลูก · รวม ${cost} · มี ${n} ลูก`
+
+- [ ] **Step 1: แก้เทสต์ให้ตรงพฤติกรรมใหม่ (ล้มก่อน)**
+
+- เทสต์ `'every step shows exactly the actions of the Actions-per-step table'`: เปลี่ยนจากผู้เล่นคนเดียวเป็นรวม (union) action type จาก 4 ชุดผู้เล่น `ranger/squirtle`, `professor/pikachu`, `catcher/bulbasaur`, `merchant/charmander` ต่อ step แล้วเทียบกับตาราง `expected` เดิม (ตารางกับเช็ก `HANDLERS` คงไว้)
+- เทสต์ใหม่ `'abilities of other classes and starters are hidden'`:
+  - `merchant/charmander` step roll → ไม่มี `SQUIRTLE_WARP`; step move → `actionTypes` เท่ากับ `['CONFIRM_MOVE']` และไม่มี section ที่ `title === 'ความสามารถพิเศษ'`
+  - `merchant/charmander` step catch → ไม่มี `BULBASAUR_CATCH`; step catch-failed → `['ACCEPT']`; step challenge/defend → ไม่มี section `kind === 'toggle'`
+  - `catcher/bulbasaur` step challenge → ไม่มี toggle Charmander
+- เทสต์ใหม่ `'own abilities that are used up stay visible and disabled'`: `squirtle` ที่ `starterUsed = true` → ปุ่ม `SQUIRTLE_WARP` ครบ 6 ปุ่ม disabled และ section `warp` มี `note` เป็นเหตุผล; `ranger` ที่ `classUses = 0` → 3 ปุ่ม Ranger disabled พร้อม reason `ใช้ความสามารถครบ 2 ครั้งแล้ว`
+- เทสต์ใหม่ `'skip sits with the throw buttons; ball buttons explain the bonus'`: catch step section `throw` มี action type ตามลำดับ `['THROW','THROW','THROW','SKIP']`; detail ปุ่ม `throw-great` ลงท้าย `เพิ่มโอกาสจับ (+1 แต้มตอนทอยจับ)`; shop detail ปุ่ม `buy-ultra` ขึ้นต้น `เพิ่มโอกาสจับมากขึ้น (+2 แต้มตอนทอยจับ)`; `buy-poke` ขึ้นต้น `บอลธรรมดา`
+- เทสต์เดิมที่คาดว่าปุ่มของคลาส/ตัวเริ่มต้นอื่นแสดงเป็น disabled พร้อม reason `ใช้ได้เฉพาะ…` (บรรทัด ~99, 152, 169, 183, 205, 284) ให้เปลี่ยนเป็นคาดว่าไม่มีปุ่มนั้น หรือเปลี่ยนผู้เล่นในเทสต์ให้เป็นเจ้าของความสามารถ — เทสต์ส่วนอื่นห้ามแก้
+
+- [ ] **Step 2: รันให้เห็นว่าล้ม**
+
+Run: `node --test test/public/action-model.test.js`
+Expected: FAIL ที่เทสต์ใหม่ทั้ง 3 และเทสต์ที่แก้
+
+- [ ] **Step 3: เพิ่ม `desc` ใน `BALL_INFO` และแก้แต่ละ step ใน `action-model.js` ตาม Interfaces**
+
+ใช้ `classReason`/`starterReason` เดิมเป็นเหตุผลตอนใช้หมด ส่วนตัดสินว่า "ไม่ใช่ของเรา" เทียบ `me.cls`/`me.starter` ตรงๆ
+
+- [ ] **Step 4: รันเทสต์ทั้งหมด**
+
+Run: `npm test`
+Expected: PASS ทั้งหมด
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add public/js/ui/info.js public/js/ui/action-model.js test/public/action-model.test.js doc/superpowers/specs/2026-10-31-in-game-desktop-layout-design.md doc/plans/2026-10-31-in-game-desktop-layout.md
+git commit -m "feat: hide other players' abilities, put skip next to throws, explain ball bonus"
+```
+
+---
+
+### Task 2: แยก section เป็น body / footer
 
 **Files:**
 - Create: `public/js/ui/action-layout.js`
 - Test: `test/public/action-layout.test.js`
-- Also commit: `doc/superpowers/specs/2026-10-31-in-game-desktop-layout-design.md`, `doc/plans/2026-10-31-in-game-desktop-layout.md`
 
 **Interfaces:**
 - Produces: `FOOTER_SECTION_IDS = ['main', 'throw', 'retry', 'done']` และ `splitActionSections(sections) -> { body: Section[], footer: Section[] }` — section ที่ `kind === 'buttons'` และ `id` อยู่ใน `FOOTER_SECTION_IDS` ไป footer ที่เหลือไป body ลำดับเดิมคงไว้ทั้งสองฝั่ง
@@ -64,7 +114,7 @@ test('every step the actor sees has a primary button in the footer', () => {
   // (position: shop 0, center 11, อื่นๆ 1; tweak: roll 3, ball 'poke', p2 อยู่ช่องเดียวกัน, เพิ่มโปเกม่อน uid 90 ที่หมดสภาพเมื่อ center)
   // step 'defend' ตั้ง s.turn.battle แบบเทสต์ 'defend: …' แล้วดูจากมุมของ 'p2'; step อื่นดูจาก 'p1'
   for (const step of ['roll', 'move', 'catch', 'catch-failed', 'shop', 'center', 'challenge', 'defend']) {
-    const m = model(stateFor(step), step === 'defend' ? 'p2' : 'p1');
+    const m = model(stateFor(step), step === 'defend' ? 'p2' : 'p1'); // stateFor(step) = ฟังก์ชันในไฟล์เทสต์นี้ที่ทำตามคอมเมนต์ข้างบน
     const { footer } = splitActionSections(m.sections);
     assert.ok(footer.flatMap(s => s.items).some(i => i.variant === 'primary'), step);
   }
@@ -88,20 +138,20 @@ Expected: PASS ทั้งหมด
 - [ ] **Step 5: Commit**
 
 ```bash
-git add public/js/ui/action-layout.js test/public/action-layout.test.js doc/superpowers/specs/2026-10-31-in-game-desktop-layout-design.md doc/plans/2026-10-31-in-game-desktop-layout.md
+git add public/js/ui/action-layout.js test/public/action-layout.test.js
 git commit -m "feat: split action sections into scrollable body and pinned footer"
 ```
 
 ---
 
-### Task 2: การ์ดคำสั่งสองส่วน (body เลื่อนได้ / footer ติดล่าง)
+### Task 3: การ์ดคำสั่งสองส่วน (body เลื่อนได้ / footer ติดล่าง)
 
 **Files:**
 - Modify: `public/js/ui/actions.js` (`buildCard`, บรรทัด ~92–102)
 - Modify: `public/css/style.css` (หมวด `/* ---------- ปุ่ม action ---------- */` ~บรรทัด 589)
 
 **Interfaces:**
-- Consumes: `splitActionSections` จาก Task 1
+- Consumes: `splitActionSections` จาก Task 2
 - Produces: DOM ของการ์ดของเรา = `section.actions-card.is-mine` > `div.actions-body` (หัวข้อ, summary, section ใน body) + `div.actions-footer` (`.form-error` ถ้ามี แล้วตาม section ใน footer); การ์ดรอยังเป็น `section.wait-card` เหมือนเดิม
 
 - [ ] **Step 1: แก้ `buildCard` ให้วาดสองส่วนตาม Interfaces**
@@ -113,7 +163,7 @@ git commit -m "feat: split action sections into scrollable body and pinned foote
 - `.actions-card.is-mine` เป็น `display: flex; flex-direction: column; min-height: 0`
 - `.actions-body { overflow-y: auto; min-height: 0; flex: 1 1 auto; scroll-padding-bottom: 1rem }`
 - `.actions-footer { flex: none; padding-top: 0.6rem; border-top: 2px dashed var(--ink) }` (ใช้ token สีเดิม ห้ามใส่ hex ใหม่)
-- ยังไม่จำกัดความสูงในขั้นนี้ (Task 3 จำกัดเมื่ออยู่กลางกระดาน) มือถือจึงหน้าตาเหมือนเดิมแค่มีเส้นคั่นเหนือปุ่มหลัก
+- ยังไม่จำกัดความสูงในขั้นนี้ (Task 4 จำกัดเมื่ออยู่กลางกระดาน) มือถือจึงหน้าตาเหมือนเดิมแค่มีเส้นคั่นเหนือปุ่มหลัก
 
 - [ ] **Step 3: ตรวจ**
 
@@ -129,14 +179,14 @@ git commit -m "feat: action card with scrollable body and pinned footer"
 
 ---
 
-### Task 3: ย้ายการ์ดคำสั่งไปกลางกระดานบนคอม
+### Task 4: ย้ายการ์ดคำสั่งไปกลางกระดานบนคอม
 
 **Files:**
 - Modify: `public/js/screens/game.js` (`mountGame`, `playEvents`/`pump`, `applyState`, `destroy`)
 - Modify: `public/css/style.css` (`.board-center`, `.stage`, media query `min-width: 768px`)
 
 **Interfaces:**
-- Consumes: DOM จาก Task 2; `stageOf`/`[data-slot="stage"]` ใน `.board-center` จาก `public/js/ui/board.js`
+- Consumes: DOM จาก Task 3; `stageOf`/`[data-slot="stage"]` ใน `.board-center` จาก `public/js/ui/board.js`
 - Produces: `#action-area` อยู่ใน `.board-center` ต่อจาก `.stage` เมื่อ `matchMedia('(min-width: 768px)').matches` ไม่งั้นอยู่ในแผงตำแหน่งเดิม (ระหว่าง `resultsSlot` กับการ์ดถัดไป); `slots.actions` คืน element เดิมเสมอ
 
 - [ ] **Step 1: ย้าย element ตาม media query**
@@ -170,7 +220,7 @@ git commit -m "feat: show the action card in the board center on desktop"
 
 ---
 
-### Task 4: เรียงแผงขวาใหม่ และตรวจครบทุก step
+### Task 5: เรียงแผงขวาใหม่ และตรวจครบทุก step
 
 **Files:**
 - Modify: `public/js/ui/panel.js` (`renderPanel`)
