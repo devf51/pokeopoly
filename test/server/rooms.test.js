@@ -251,26 +251,97 @@ test('timeout resolves a pending defend and the game keeps going', (t) => {
   r.close();
 });
 
-test('timeout never stalls: errors inside auto-play are swallowed and the timer re-arms', (t) => {
+test('timeout never stalls: when every auto step throws, endTurn moves the game on', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const errors = [];
-  const orig = console.error;
-  console.error = (...a) => errors.push(a);
-  try {
-    let updates = 0;
-    const r = manager({ timeoutMs: 1000, onUpdate: () => updates++ });
-    const { code, room } = startedRoom(r);
-    room.game.turn.step = 'bogus'; // สถานะที่ autoAction เล่นต่อไม่ได้
-    t.mock.timers.tick(1000);
-    assert.ok(errors.length > 0);
-    // ซ่อมสถานะแล้วรอบถัดไปต้องเดินต่อ
-    room.game.turn.step = 'roll';
-    t.mock.timers.tick(1000);
-    assert.equal(r.getRoom(code).game.turn.playerId, room.game.order[1]);
-    r.close();
-  } finally {
-    console.error = orig;
-  }
+  const logged = [];
+  const logger = { error: (...a) => logged.push(a) };
+  const updates = [];
+  const r = manager({ timeoutMs: 1000, logger, onUpdate: (room, events) => updates.push(events) });
+  const { code, room } = startedRoom(r);
+  const [first, second] = room.game.order;
+  room.game.turn.step = 'bogus'; // สถานะที่ autoAction/applyAction เล่นต่อไม่ได้
+
+  t.mock.timers.tick(1000);
+
+  assert.ok(logged.length > 0);
+  assert.equal(updates.length, 1);
+  assert.deepEqual(updates[0], [{ type: 'turn', playerId: second }]);
+  const game = r.getRoom(code).game;
+  assert.equal(game.turn.playerId, second);
+  assert.equal(game.turn.step, 'roll');
+  assert.notEqual(game.turn.playerId, first);
+  // ตาใหม่ปกติแล้ว timer รอบถัดไปเล่นแทนต่อได้
+  t.mock.timers.tick(1000);
+  assert.equal(updates.length, 2);
+  assert.equal(r.getRoom(code).game.turn.playerId, first);
+  r.close();
+});
+
+test('timeout fallback also abandons a pending defend that cannot be auto-played', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const updates = [];
+  const r = manager({
+    timeoutMs: 1000,
+    logger: { error() {} },
+    onUpdate: (room, events) => updates.push(events),
+  });
+  const { code, room } = startedRoom(r);
+  const [first, second] = room.game.order;
+  const game = room.game;
+  // ฝ่ายรับไม่มีโปเกม่อนที่สู้ได้ => autoAction เล่น defend ไม่ได้
+  game.players.find(p => p.id === second).mons.forEach(m => { m.fainted = true; });
+  game.turn.step = 'defend';
+  game.turn.battle = { attackerId: first, defenderId: second, attackerUid: 1, attackerCharmander: false };
+
+  t.mock.timers.tick(1000);
+
+  const after = r.getRoom(code).game;
+  assert.equal(updates.length, 1);
+  assert.equal(after.turn.step, 'roll');
+  assert.equal(after.turn.battle, null);
+  assert.equal(after.turn.playerId, second);
+  r.close();
+});
+
+test('fallback ends the game when everyone has finished, and stops the timer', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const updates = [];
+  const r = manager({
+    timeoutMs: 1000,
+    logger: { error() {} },
+    onUpdate: (room, events) => updates.push(events),
+  });
+  const { code, room } = startedRoom(r);
+  room.game.players.forEach(p => { p.finished = true; });
+  room.game.turn.step = 'bogus';
+
+  t.mock.timers.tick(1000);
+
+  assert.equal(r.getRoom(code).game.phase, 'ended');
+  assert.equal(updates[0][0].type, 'gameOver');
+  t.mock.timers.tick(5000);
+  assert.equal(updates.length, 1);
+  r.close();
+});
+
+test('if even the fallback fails the timer keeps re-arming and onUpdate still fires', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const logged = [];
+  let updates = 0;
+  const r = manager({
+    timeoutMs: 1000,
+    logger: { error: (...a) => logged.push(a) },
+    onUpdate: () => updates++,
+  });
+  const { room } = startedRoom(r);
+  room.game.order = []; // endTurn: ไม่มีผู้เล่นให้ไปต่อ และ endGame ก็พัง
+  room.game.players = [];
+  room.game.turn.step = 'bogus';
+  t.mock.timers.tick(1000);
+  t.mock.timers.tick(1000);
+  assert.equal(updates, 2);
+  assert.ok(logged.some(a => String(a[0]).includes('fallback endTurn failed')));
+  r.close();
 });
 
 test('a finished game clears its timer', (t) => {

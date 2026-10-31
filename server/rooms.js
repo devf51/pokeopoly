@@ -5,6 +5,7 @@ import {
 import { makeContext } from '../shared/engine/context.js';
 import { createGame } from '../shared/engine/state.js';
 import { actorOf, applyAction } from '../shared/engine/index.js';
+import { endTurn } from '../shared/engine/turn.js';
 import { autoAction } from '../shared/engine/auto.js';
 import { viewFor } from '../shared/engine/view.js';
 
@@ -59,12 +60,14 @@ export class RoomManager {
     timeoutMs = TURN_TIMEOUT_MS,
     idleMs = ROOM_IDLE_MS,
     onUpdate = () => {},
+    logger = console,
   }) {
     this.pokedex = pokedex;
     this.rng = rng;
     this.timeoutMs = timeoutMs;
     this.idleMs = idleMs;
     this.onUpdate = onUpdate;
+    this.logger = logger;
     this.rooms = new Map();
   }
 
@@ -240,14 +243,14 @@ export class RoomManager {
     try {
       events = this.#autoPlay(room);
     } catch (err) {
-      console.error('auto-play failed', err);
+      this.logger.error('auto-play failed', err);
     } finally {
       // ไม่ว่าจะเกิดอะไร ต้องตั้งเวลาต่อและแจ้งทุกคน เกมห้ามค้าง
       this.#armTimer(room);
       try {
         this.onUpdate(room, events);
       } catch (err) {
-        console.error('onUpdate failed', err);
+        this.logger.error('onUpdate failed', err);
       }
     }
   }
@@ -257,21 +260,40 @@ export class RoomManager {
   #autoPlay(room) {
     const collected = [];
     const startActor = actorOf(room.game);
+    let played = 0;
+    let failed = false;
     for (let i = 0; i < MAX_AUTO_STEPS; i++) {
-      let step;
       try {
-        step = autoAction(room.game);
+        const step = autoAction(room.game);
         if (!step) break;
         const { state, events } = applyAction(room.game, step.actorId, step.action, room.ctx);
         room.game = state;
         collected.push(...events);
+        played++;
       } catch (err) {
-        console.error('auto-play step failed', err);
+        this.logger.error('auto-play step failed', err);
+        failed = true;
         break;
       }
       if (room.game.phase !== 'playing') break;
       if (room.game.turn.step === 'roll' || actorOf(room.game) !== startActor) break;
     }
+    // ทางสุดท้าย: ถ้าเล่นแทนไม่ได้เลยสักก้าวในรอบนี้ ข้ามตาด้วย endTurn ของ engine
+    // (ทิ้ง battle ที่ค้างอยู่) เพื่อไม่ให้เกมค้างถาวร
+    if (failed && played === 0) collected.push(...this.#forceEndTurn(room));
     return collected;
+  }
+
+  #forceEndTurn(room) {
+    try {
+      const next = structuredClone(room.game);
+      const events = [];
+      endTurn(next, events);
+      room.game = next;
+      return events;
+    } catch (err) {
+      this.logger.error('fallback endTurn failed', err);
+      return [];
+    }
   }
 }
