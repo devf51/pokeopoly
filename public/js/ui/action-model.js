@@ -182,17 +182,23 @@ function catchFailedStep(game, me, pokedexById) {
   const encounter = encounterOf(game, me, pokedexById);
   const { roll, ball } = game.turn;
   const summary = [`ทอยได้ ${roll} ด้วย ${BALL_INFO[ball]?.name ?? 'บอล'} ยังไม่ถึงเลขเป้า${encounter ? ` ${encounter.target}+` : ''}`];
+  const retries = [
+    ...ifOwn(me, 'professor', [control('professor', 'Professor: ทอยจับใหม่', { type: 'PROFESSOR_REROLL' }, {
+      reason: classReason(me, 'professor'), detail: `เหลือ ${me.classUses} ครั้ง`,
+    })]),
+    ...ifOwn(me, 'pikachu', [control('pikachu', 'Pikachu: ทอยจับใหม่', { type: 'PIKACHU_REROLL' }, { reason: starterReason(me, 'pikachu') })]),
+  ];
   return {
     summary,
     sections: [
       encounter,
       buttons('retry', [
-        ...ifOwn(me, 'professor', [control('professor', 'Professor: ทอยจับใหม่', { type: 'PROFESSOR_REROLL' }, {
-          reason: classReason(me, 'professor'), detail: `เหลือ ${me.classUses} ครั้ง`,
-        })]),
-        ...ifOwn(me, 'pikachu', [control('pikachu', 'Pikachu: ทอยจับใหม่', { type: 'PIKACHU_REROLL' }, { reason: starterReason(me, 'pikachu') })]),
+        ...retries,
         control('accept', 'ยอมรับผล (โปเกม่อนหนีไป)', { type: 'ACCEPT' }, { variant: 'primary' }),
-      ], { title: 'ทอยจับใหม่ได้ด้วยบอลลูกเดิม ไม่เสียบอลเพิ่ม', layout: 'list' }),
+      ], {
+        // หัวข้อ "ทอยใหม่ได้" เฉพาะเมื่อมีความสามารถทอยใหม่ของเราเอง
+        title: retries.length > 0 ? 'ทอยจับใหม่ได้ด้วยบอลลูกเดิม ไม่เสียบอลเพิ่ม' : undefined, layout: 'list',
+      }),
     ].filter(Boolean),
   };
 }

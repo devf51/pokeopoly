@@ -221,6 +221,7 @@ test('catch-failed step: shows the missed roll and ball, abilities by class/star
   assert.equal(one(m, 'PROFESSOR_REROLL').disabled, false);
   assert.equal(one(m, 'PIKACHU_REROLL').disabled, false);
   assert.equal(one(m, 'ACCEPT').disabled, false);
+  assert.match(m.sections.find(s => s.id === 'retry').title, /ทอยจับใหม่/);
   const plain = model(setup({ step: 'catch-failed', tweak: s => { s.turn.ball = 'poke'; s.turn.roll = 2; } }).state);
   assert.deepEqual(actionTypes(plain), ['ACCEPT']);
 });
@@ -353,6 +354,8 @@ test('abilities of other classes and starters are hidden', () => {
   assert.equal(byType(caught, 'BULBASAUR_CATCH').length, 0);
   const failed = model(setup({ step: 'catch-failed', players: mc, tweak: s => { s.turn.ball = 'poke'; s.turn.roll = 1; } }).state);
   assert.deepEqual(actionTypes(failed), ['ACCEPT']);
+  // ไม่มีความสามารถทอยใหม่ ก็ไม่บอกว่า "ทอยจับใหม่ได้"
+  assert.equal(failed.sections.find(s => s.id === 'retry').title, undefined);
 
   const bulb = [{ ...PLAYERS[0], cls: 'merchant', starter: 'bulbasaur' }, PLAYERS[1]];
   const ch = model(setup({ step: 'challenge', players: bulb, tweak: s => { s.players[1].position = 1; } }).state);
