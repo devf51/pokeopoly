@@ -749,6 +749,9 @@ button, input { font: inherit; color: inherit; }
 
 @media (min-width: 768px) {
   .panel { max-height: calc(100dvh - 2rem); overflow-y: auto; padding: 0 0.4rem 0.4rem 0; }
+  /* แผงขวาเหลือแค่ข้อมูล: ตาของใคร → ผลการแข่ง → ข้อมูลเรา/ผู้เล่น → ประวัติ → สีช่อง */
+  .panel .history-card { order: 1; }
+  .panel .legend { order: 2; }
 
   /* การ์ดคำสั่งกลางกระดาน: ลูกเต๋าย่อไว้บน การ์ดใช้ที่ที่เหลือ (ระหว่างแอนิเมชันการ์ดถูกซ่อน ลูกเต๋ากลับขนาดเต็ม) */
   .board-center { min-height: 0; overflow: hidden; }

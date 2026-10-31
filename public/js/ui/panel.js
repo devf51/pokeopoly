@@ -14,11 +14,19 @@ export function renderPanel(el, room, pokedexById, myId) {
     return;
   }
   const me = game.players.find(p => p.id === myId);
+  const playersCard = (title, players) => h('section', { class: 'card' },
+    h('h2', { class: 'section-title' }, title),
+    h('ul', { class: 'players' }, players.map(p => playerCard(room, p, pokedexById, myId))));
+  if (!me) {
+    el.replaceChildren(playersCard('ผู้เล่น', game.players));
+    return;
+  }
+  // ข้อมูลของเราขึ้นก่อน (เงิน บอล ความสามารถ → โปเกม่อนของเรา) แล้วค่อยเป็นคนอื่น
+  const others = game.players.filter(p => p.id !== myId);
   el.replaceChildren(
-    me && myMons(me, pokedexById),
-    h('section', { class: 'card' },
-      h('h2', { class: 'section-title' }, 'ผู้เล่น'),
-      h('ul', { class: 'players' }, game.players.map(p => playerCard(room, p, pokedexById, myId)))));
+    playersCard('ข้อมูลของคุณ', [me]),
+    myMons(me, pokedexById),
+    ...(others.length > 0 ? [playersCard('ผู้เล่นคนอื่น', others)] : []));
 }
 
 function playerCard(room, p, pokedexById, myId) {
