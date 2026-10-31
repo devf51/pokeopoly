@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#232a63">
+  <title>เกมเศรษฐีโปเกม่อน</title>
+  <!-- ไอคอนว่างแบบ inline กันเบราว์เซอร์ขอ /favicon.ico (ห้ามเพิ่มไฟล์ภาพ) -->
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="conn-banner" class="conn-banner" role="status" aria-live="polite" hidden>
+    ขาดการเชื่อมต่อกับเซิร์ฟเวอร์ กำลังเชื่อมต่อใหม่…
+  </div>
+  <main id="app" class="app"></main>
+  <noscript>เกมนี้ต้องเปิดใช้ JavaScript</noscript>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

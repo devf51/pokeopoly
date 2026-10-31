@@ -1,6 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import {
-  CLASSES, MAX_PLAYERS, MIN_PLAYERS, ROOM_IDLE_MS, STARTERS, TURN_TIMEOUT_MS,
+  CLASSES, MAX_NAME_LENGTH, MAX_PLAYERS, MIN_PLAYERS, ROOM_IDLE_MS, STARTERS, TURN_TIMEOUT_MS,
 } from '../shared/constants.js';
 import { makeContext } from '../shared/engine/context.js';
 import { createGame } from '../shared/engine/state.js';
@@ -12,7 +12,6 @@ import { viewFor } from '../shared/engine/view.js';
 // รหัสห้อง: ตัวอักษรพิมพ์ใหญ่ 4 ตัว ไม่ใช้ I และ O (Plan Decisions ข้อ 13)
 const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const CODE_LENGTH = 4;
-const MAX_NAME_LENGTH = 20;
 // กันลูปเล่นแทนวนไม่จบ (หนึ่งตาจริงใช้ไม่เกินสิบกว่า action)
 const MAX_AUTO_STEPS = 50;
 

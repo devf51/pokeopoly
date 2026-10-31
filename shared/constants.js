@@ -4,6 +4,7 @@ export const BOARD_SIZE = 32;
 export const LAPS_TO_FINISH = 2;
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;
+export const MAX_NAME_LENGTH = 20;
 
 export const STARTING_MONEY = 500;
 export const STARTING_BALLS = { poke: 5, great: 0, ultra: 0 };

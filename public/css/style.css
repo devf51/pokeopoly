@@ -1,0 +1,547 @@
+/* เกมเศรษฐีโปเกม่อน — หน้าตาแบบกล่องบอร์ดเกม: โต๊ะสีน้ำเงินเข้ม แผ่นกระดาษขอบหนา เงาแข็งเลื่อนมุม */
+
+:root {
+  --ink: #141a3a;
+  --table: #232a63;
+  --table-deep: #171c4a;
+  --paper: #f2f5ff;
+  --paper-2: #e2e8fb;
+  --red: #d9263b;
+  --yellow: #ffcb05;
+  --blue: #3563e9;
+  --muted: #4b537d;
+  --ok: #15803d;
+  --bad: #b91c1c;
+
+  /* สีช่อง: โซน 1-5 = เขียว ฟ้า ส้ม ม่วง แดง */
+  --start: #ffd23f;
+  --mart: #3b6fd8;
+  --center: #ff8fbf;
+  --z1: #8ad66b;
+  --z2: #7cc8f2;
+  --z3: #ffa94d;
+  --z4: #b394e6;
+  --z5: #f0626b;
+
+  --font: "Noto Sans Thai UI", "Noto Sans Thai", "Leelawadee UI", "Sarabun", "Tahoma", system-ui, sans-serif;
+  --shadow: 0.3rem 0.3rem 0 var(--ink);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--ink);
+  background-color: var(--table);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1.5px, transparent 1.6px);
+  background-size: 22px 22px;
+}
+
+[hidden] { display: none !important; }
+
+h1, h2, p { margin: 0; }
+
+button, input { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.app {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+}
+
+.conn-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 0.6rem 1rem;
+  text-align: center;
+  font-weight: 700;
+  color: #fff;
+  background: var(--red);
+  border-bottom: 3px solid var(--ink);
+}
+
+/* ---------- การ์ดและปุ่ม ---------- */
+
+.card {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 1.1rem;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem;
+}
+
+.section-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.4;
+  margin-bottom: 0.6rem;
+}
+
+.section-note { color: var(--muted); font-size: 0.92rem; margin: -0.3rem 0 0.7rem; }
+
+.field-label { display: block; font-weight: 700; font-size: 0.95rem; margin-bottom: 0.3rem; }
+
+.input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.5rem 0.8rem;
+  font-size: 1.05rem; /* 16px ขึ้นไป กันมือถือซูมเองตอนโฟกัส */
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 0.8rem;
+}
+.input:disabled { background: var(--paper-2); }
+.input-code {
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  text-indent: 0.35em;
+  text-transform: uppercase;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.5rem 1.2rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+  cursor: pointer;
+  border: 3px solid var(--ink);
+  border-radius: 0.9rem;
+  box-shadow: 0 0.25rem 0 var(--ink);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.btn:active:not(:disabled) { transform: translateY(0.2rem); box-shadow: 0 0.05rem 0 var(--ink); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-primary { background: var(--red); color: #fff; }
+.btn-secondary { background: var(--yellow); color: var(--ink); }
+.btn-big { width: 100%; min-height: 3.4rem; font-size: 1.2rem; }
+.btn-small { min-height: 2.75rem; padding: 0.3rem 0.9rem; font-size: 0.95rem; }
+
+.btn-link {
+  background: none;
+  border: 0;
+  padding: 0.7rem 0.4rem;
+  min-height: 2.75rem;
+  color: #fff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.form-error {
+  margin-top: 0.8rem;
+  padding: 0.55rem 0.8rem;
+  font-weight: 700;
+  color: var(--bad);
+  background: #fee2e2;
+  border: 2px solid var(--bad);
+  border-radius: 0.7rem;
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.5;
+  border: 2px solid var(--ink);
+  border-radius: 0.6rem;
+  vertical-align: middle;
+}
+.tag-me { background: var(--yellow); }
+.tag-host { background: var(--paper-2); }
+
+.color-dot {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  background: var(--c);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+}
+
+.status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; font-weight: 700; white-space: nowrap; }
+.status-dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; background: currentColor; }
+.status.on { color: var(--ok); }
+.status.off { color: var(--bad); }
+.status.off .status-dot { border-radius: 2px; } /* ไม่พึ่งสีอย่างเดียว: ออฟไลน์เป็นสี่เหลี่ยม */
+
+.muted { color: var(--muted); font-size: 0.9rem; }
+
+/* ---------- หน้าแรก ---------- */
+
+.home { max-width: 28rem; margin: 0 auto; padding-top: 1.5rem; }
+
+.hero { text-align: center; margin-bottom: 1.4rem; }
+
+.hero-starters { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+.hero-mon {
+  display: grid;
+  place-items: center;
+  width: 4.4rem;
+  height: 4.4rem;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 0.2rem 0.2rem 0 var(--ink);
+  animation: hop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  animation-delay: calc(var(--i) * 0.12s + 0.1s);
+}
+.hero-sprite { width: 3.6rem; height: 3.6rem; image-rendering: pixelated; }
+
+@keyframes hop {
+  from { transform: translateY(1.6rem) scale(0.7); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.hero-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: clamp(2.6rem, 11vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--yellow);
+  text-shadow: 0.06em 0.06em 0 var(--red), 0.12em 0.12em 0 var(--ink);
+  letter-spacing: 0.01em;
+}
+.hero-title span:last-child { margin-top: -0.15em; }
+.hero-sub { margin-top: 0.7rem; color: #dfe5ff; }
+
+.home-card { display: grid; gap: 0.9rem; }
+.home-card .btn { width: 100%; }
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+.divider::before, .divider::after { content: ""; flex: 1; height: 3px; background: var(--paper-2); border-radius: 2px; }
+.join-row { display: grid; grid-template-columns: 1fr auto; gap: 0.6rem; }
+.home-card .join-row .btn { width: auto; }
+.home-card .form-error { margin-top: 0; }
+
+.status-card { max-width: 28rem; margin: 20vh auto 0; text-align: center; }
+.status-text { font-weight: 700; }
+.status-actions { display: grid; gap: 0.7rem; margin-top: 1rem; }
+
+/* ---------- ล็อบบี้ ---------- */
+
+.lobby { max-width: 44rem; margin: 0 auto; display: grid; gap: 1.1rem; }
+.lobby-body, .lobby-sections { display: grid; gap: 1.1rem; }
+
+.lobby-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.room-code-box { display: grid; }
+.room-code {
+  font-size: clamp(2.6rem, 14vw, 4rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.22em;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.lobby-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.lobby-player {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.7rem;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 0.8rem;
+}
+.lobby-player.is-offline { opacity: 0.7; }
+.lp-main { flex: 1; min-width: 0; display: grid; }
+.lp-name { font-weight: 800; overflow-wrap: anywhere; }
+.lp-choice { font-size: 0.85rem; color: var(--muted); }
+.lp-sprite { width: 2.6rem; height: 2.6rem; flex: none; }
+
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; }
+.choice {
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  min-height: 5.5rem;
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 0.9rem;
+  box-shadow: 0 0.2rem 0 var(--ink);
+  transition: transform 0.08s, background-color 0.08s;
+}
+.choice-name { font-weight: 800; font-size: 1.05rem; }
+.choice-name small { margin-left: 0.4rem; font-weight: 600; color: var(--muted); font-size: 0.8rem; }
+.choice-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.45; }
+.choice.is-selected {
+  background: var(--yellow);
+  transform: translateY(0.15rem);
+  box-shadow: 0 0.05rem 0 var(--ink), inset 0 0 0 3px #fff;
+}
+.choice.is-selected .choice-desc, .choice.is-selected small { color: var(--ink); }
+.choice-starter { justify-items: start; }
+.choice-sprite { width: 4rem; height: 4rem; image-rendering: pixelated; }
+
+.lobby-foot { display: grid; gap: 0.6rem; justify-items: center; }
+.start-area { display: grid; gap: 0.6rem; width: 100%; }
+.wait-note { text-align: center; color: #dfe5ff; font-weight: 600; }
+
+/* ---------- หน้าเกม: กระดานซ้าย แผงขวา ---------- */
+
+.game {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(19rem, 24rem);
+  gap: 1.2rem;
+  align-items: start;
+}
+
+.board-wrap {
+  container-type: inline-size;
+  width: min(100%, calc(100dvh - 2rem));
+  margin-inline: auto;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-rows: repeat(9, minmax(0, 1fr));
+  gap: 0.8cqw;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 1.2cqw;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 2.5cqw;
+  box-shadow: 0.6cqw 0.6cqw 0 var(--ink);
+}
+
+.cell {
+  --tile: var(--paper-2);
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  background: var(--tile);
+  border: max(2px, 0.4cqw) solid var(--ink);
+  border-radius: 1.3cqw;
+  box-shadow: inset 0 -0.8cqw rgba(20, 26, 58, 0.18);
+  font-weight: 800;
+}
+.t-start { --tile: var(--start); }
+.t-mart { --tile: var(--mart); color: #fff; }
+.t-center { --tile: var(--center); }
+.z1 { --tile: var(--z1); }
+.z2 { --tile: var(--z2); }
+.z3 { --tile: var(--z3); }
+.z4 { --tile: var(--z4); }
+.z5 { --tile: var(--z5); }
+
+.cell-label { font-size: 3cqw; line-height: 1.2; text-align: center; }
+/* ป้ายชื่อช่องอยู่ด้านบนเสมอ หมากอยู่แถวเดียวที่ก้นช่อง จึงไม่ซ้อนกันไม่ว่ามีหมาก 1-4 ตัว */
+.cell:not(.has-mon) .cell-label { align-self: start; margin-top: 0.3cqw; }
+.cell.z1 .cell-label, .cell.z2 .cell-label, .cell.z3 .cell-label,
+.cell.z4 .cell-label, .cell.z5 .cell-label { font-size: 4.4cqw; }
+
+/* ช่องที่เห็นตัวโปเกม่อน: sprite เต็มช่อง เลขโซนย้ายไปเป็นป้ายมุมซ้ายบน */
+.cell-mon { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.cell-sprite { width: 112%; height: 112%; max-width: none; object-fit: contain; image-rendering: pixelated; margin-top: -4%; }
+.cell.has-mon .cell-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  min-width: 3.4cqw;
+  padding: 0 0.5cqw;
+  font-size: 2.6cqw;
+  text-align: center;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 1cqw 0 1cqw 0;
+}
+
+.tokens {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  padding-bottom: 0.4cqw;
+  pointer-events: none;
+}
+/* 4 ตัวเรียงแถวเดียวซ้อนกันเล็กน้อย: 3cqw x 4 - 1cqw x 3 = 9cqw พอดีความกว้างช่อง */
+.token {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3cqw;
+  height: 3cqw;
+  font-size: 0; /* จอเล็ก: ตัวอักษรไม่พอดีวงกลม ใช้สี + title แทน */
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  background: var(--c);
+  border: max(2px, 0.4cqw) solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 max(1px, 0.25cqw) var(--ink);
+}
+.token + .token { margin-left: -1cqw; }
+@container (min-width: 520px) {
+  .token { font-size: 1.7cqw; }
+}
+.token.is-me { box-shadow: 0 0 0 max(1px, 0.25cqw) var(--ink), 0 0 0 0.8cqw var(--yellow); }
+.token.is-offline { opacity: 0.55; }
+
+.cell.is-active {
+  z-index: 3;
+  outline: 0.7cqw solid var(--yellow);
+  outline-offset: 0.1cqw;
+  box-shadow: inset 0 -0.8cqw rgba(20, 26, 58, 0.18), 0 0 0 1.1cqw var(--ink);
+}
+
+.board-center {
+  grid-area: 2 / 2 / 9 / 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6cqw;
+  min-width: 0;
+  padding: 2cqw;
+  text-align: center;
+  color: #fff;
+  background: var(--table);
+  border: max(2px, 0.4cqw) dashed var(--ink);
+  border-radius: 2cqw;
+}
+.center-title {
+  font-size: 6.2cqw;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--yellow);
+  text-shadow: 0.3cqw 0.3cqw 0 var(--red);
+}
+.center-room { font-size: 3cqw; font-weight: 700; color: #dfe5ff; }
+.center-code { font-weight: 800; letter-spacing: 0.2em; color: #fff; }
+.stage { width: 100%; min-height: 12cqw; display: grid; place-items: center; }
+
+/* ---------- แผงข้อมูล ---------- */
+
+.panel {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.turn-card { display: grid; gap: 0.15rem; }
+.turn-banner { display: grid; gap: 0.1rem; }
+.turn-banner strong { font-size: 1.3rem; font-weight: 800; line-height: 1.4; }
+.turn-banner strong.is-mine { color: var(--red); }
+.turn-step { color: var(--muted); font-weight: 600; }
+.timer { font-weight: 700; font-variant-numeric: tabular-nums; }
+.timer.is-low { color: var(--bad); }
+
+/* Task 10 วางปุ่ม action ที่นี่ ถ้าว่างอยู่จะไม่กินที่ */
+.action-area:empty { display: none; }
+.action-area { display: grid; gap: 0.6rem; }
+
+.players { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
+.player {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.7rem 0.8rem;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 0.9rem;
+}
+.player.is-active { background: #fff8d1; box-shadow: inset 0 0 0 3px var(--yellow); }
+.player.is-offline { opacity: 0.75; }
+.player-head { display: flex; align-items: center; gap: 0.5rem; }
+.player-name { flex: 1; min-width: 0; font-weight: 800; overflow-wrap: anywhere; }
+.player-sub { font-size: 0.85rem; color: var(--muted); }
+.player-stats { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; font-size: 0.92rem; font-weight: 600; }
+.money { font-weight: 800; font-variant-numeric: tabular-nums; }
+.balls { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.ball {
+  padding: 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.6;
+  border: 2px solid var(--ink);
+  border-radius: 0.6rem;
+  background: var(--paper-2);
+}
+.ball-great { background: #cfe0ff; }
+.ball-ultra { background: #fff0a8; }
+.mons { display: flex; flex-wrap: wrap; gap: 0.15rem; min-height: 0.5rem; }
+.mon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: var(--paper);
+  border: 2px solid var(--paper-2);
+  border-radius: 0.6rem;
+}
+.mon.is-starter { border-color: var(--yellow); }
+.mon.is-fainted { filter: grayscale(1); opacity: 0.55; border-style: dashed; border-color: var(--muted); }
+.mon-sprite { width: 2.2rem; height: 2.2rem; image-rendering: pixelated; }
+.sprite-missing { color: var(--muted); font-weight: 800; }
+
+.legend summary { cursor: pointer; font-weight: 800; min-height: 2rem; }
+.legend-list { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; gap: 0.4rem; font-size: 0.9rem; }
+.legend-list li { display: flex; align-items: center; gap: 0.6rem; }
+.swatch {
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  background: var(--tile);
+  border: 2px solid var(--ink);
+  border-radius: 0.4rem;
+}
+.swatch.t-start { --tile: var(--start); }
+.swatch.t-mart { --tile: var(--mart); }
+.swatch.t-center { --tile: var(--center); }
+
+/* ---------- จอแคบ: แผงอยู่ใต้กระดาน กระดานเต็มความกว้าง ---------- */
+
+@media (max-width: 767px) {
+  .app { padding: 0.7rem; }
+  .game { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .board-wrap { width: 100%; }
+  .board { aspect-ratio: 1; }
+  .choices { grid-template-columns: minmax(0, 1fr); }
+  .choices-starters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card { padding: 0.9rem; }
+}
+
+@media (min-width: 768px) {
+  .panel { max-height: calc(100dvh - 2rem); overflow-y: auto; padding: 0 0.4rem 0.4rem 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
