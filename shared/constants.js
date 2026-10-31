@@ -40,3 +40,7 @@ export const ROOM_IDLE_MS = 600000;
 export const CLASSES = ['catcher', 'merchant', 'ranger', 'professor'];
 // ชื่อตัวเริ่มต้น -> dexId
 export const STARTERS = { bulbasaur: 1, charmander: 4, squirtle: 7, pikachu: 25 };
+
+// ก้าวเดินขั้นต่ำต่อตา และเพดานก้าวของ Ranger ตอนขยับ ±1 (Plan Decisions ข้อ 5)
+export const MIN_STEPS = 1;
+export const RANGER_MAX_STEPS = 7;
