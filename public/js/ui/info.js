@@ -1,8 +1,9 @@
 // ข้อมูลสำหรับแสดงผล (ชื่อไทย คำอธิบาย) ตัวเลขดึงจาก shared/constants.js ไม่เขียนซ้ำ
+// import แบบ relative (../../../shared) ได้ URL เดียวกับ /shared ในเบราว์เซอร์ และ Node ใช้เทสต์โมดูลนี้ได้
 import {
   CATCHER_BONUS, CLASS_USES, MERCHANT_DISCOUNT, MERCHANT_SALARY, PROFESSOR_VISION,
   SQUIRTLE_MAX_WARP, STARTERS,
-} from '/shared/constants.js';
+} from '../../../shared/constants.js';
 
 const discountPercent = Math.round(MERCHANT_DISCOUNT * 100);
 
@@ -51,3 +52,14 @@ export const STEP_LABEL = {
   challenge: 'เลือกคนที่จะท้าสู้',
   defend: 'ถูกท้าสู้ เลือกโปเกม่อนที่จะสู้',
 };
+
+// ชื่อธาตุ (ข้อมูลใน pokedex.json เป็นภาษาอังกฤษตัวเล็ก) แสดงเป็นไทย
+export const TYPE_NAME = {
+  normal: 'ปกติ', fire: 'ไฟ', water: 'น้ำ', electric: 'ไฟฟ้า', grass: 'หญ้า', ice: 'น้ำแข็ง',
+  fighting: 'ต่อสู้', poison: 'พิษ', ground: 'ดิน', flying: 'บิน', psychic: 'พลังจิต',
+  bug: 'แมลง', rock: 'หิน', ghost: 'ผี', dragon: 'มังกร',
+};
+
+export const TILE_NAME = { start: 'จุดเริ่มต้น', mart: 'Poké Mart', center: 'Pokémon Center' };
+
+export const className = cls => `${CLASS_INFO[cls]?.name ?? ''} (${CLASS_INFO[cls]?.en ?? ''})`;

@@ -101,7 +101,24 @@ export function renderBoard(el, room, pokedexById, myId) {
     const target = entry.cells[p.position]?.tokens;
     if (target && token.parentElement !== target) target.append(token);
   }
+  syncTokenFlags(entry);
   return entry;
+}
+
+// ช่องที่มีหมากยืนอยู่ได้ class has-tokens เพื่อให้ CSS ดัน sprite ขึ้น ไม่ให้แถวหมากบังตัวโปเกม่อน
+function syncTokenFlags(entry) {
+  for (const cell of entry.cells) cell.el.classList.toggle('has-tokens', cell.tokens.childElementCount > 0);
+}
+
+// ย้ายหมากของผู้เล่นไปช่อง index ด้วย appendChild (ใช้ตอนเล่นแอนิเมชันเดินทีละช่อง) คืน element หมาก หรือ null
+export function placeToken(el, playerId, index) {
+  const entry = state.get(el);
+  const token = entry?.tokens.get(playerId);
+  const cell = entry?.cells[index];
+  if (!token || !cell) return null;
+  if (token.parentElement !== cell.tokens) cell.tokens.append(token);
+  syncTokenFlags(entry);
+  return token;
 }
 
 // ช่องว่างกลางกระดานสำหรับลูกเต๋า/ผลลัพธ์ (Task 10)

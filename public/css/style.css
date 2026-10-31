@@ -382,6 +382,10 @@ button, input { font: inherit; color: inherit; }
   border-radius: 1cqw 0 1cqw 0;
 }
 
+/* ช่องที่มีหมากยืนอยู่: ดัน sprite ขึ้นให้แถวหมากไม่บังตัวโปเกม่อน (class has-tokens ตั้งจาก board.js) */
+.cell.has-mon.has-tokens .cell-mon { inset: 0 0 3.6cqw 0; }
+.cell.has-mon.has-tokens .cell-sprite { width: 100%; height: 100%; margin-top: 0; }
+
 .tokens {
   position: absolute;
   inset: auto 0 0 0;
@@ -446,7 +450,15 @@ button, input { font: inherit; color: inherit; }
 }
 .center-room { font-size: 3cqw; font-weight: 700; color: #dfe5ff; }
 .center-code { font-weight: 800; letter-spacing: 0.2em; color: #fff; }
-.stage { width: 100%; min-height: 12cqw; display: grid; place-items: center; }
+.stage {
+  width: 100%;
+  min-height: 12cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2cqw;
+}
 
 /* ---------- แผงข้อมูล ---------- */
 
@@ -464,7 +476,7 @@ button, input { font: inherit; color: inherit; }
 .timer { font-weight: 700; font-variant-numeric: tabular-nums; }
 .timer.is-low { color: var(--bad); }
 
-/* Task 10 วางปุ่ม action ที่นี่ ถ้าว่างอยู่จะไม่กินที่ */
+/* ปุ่ม action: ว่างอยู่ก็ไม่กินที่ */
 .action-area:empty { display: none; }
 .action-area { display: grid; gap: 0.6rem; }
 
@@ -482,6 +494,7 @@ button, input { font: inherit; color: inherit; }
 .player-head { display: flex; align-items: center; gap: 0.5rem; }
 .player-name { flex: 1; min-width: 0; font-weight: 800; overflow-wrap: anywhere; }
 .player-sub { font-size: 0.85rem; color: var(--muted); }
+.abilities { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.1rem 0.8rem; font-size: 0.82rem; color: var(--muted); }
 .player-stats { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; font-size: 0.92rem; font-weight: 600; }
 .money { font-weight: 800; font-variant-numeric: tabular-nums; }
 .balls { display: flex; flex-wrap: wrap; gap: 0.3rem; }
@@ -526,6 +539,196 @@ button, input { font: inherit; color: inherit; }
 .swatch.t-mart { --tile: var(--mart); }
 .swatch.t-center { --tile: var(--center); }
 
+/* ---------- เล่นเกม: ลูกเต๋า ช่องกลางกระดาน ---------- */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stage-dice { display: flex; justify-content: center; gap: 3cqw; }
+.stage-die-box { display: grid; justify-items: center; gap: 0.6cqw; }
+.die-label { max-width: 16cqw; font-size: max(0.7rem, 2.6cqw); font-weight: 700; color: #dfe5ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.die {
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  place-items: center;
+  width: 11cqw;
+  height: 11cqw;
+  padding: 1.3cqw;
+  background: #fff;
+  border: max(2px, 0.5cqw) solid var(--ink);
+  border-radius: 2cqw;
+  box-shadow: 0.7cqw 0.7cqw 0 var(--ink);
+}
+.pip { width: 2.3cqw; height: 2.3cqw; background: var(--ink); border-radius: 50%; }
+.die.is-number { display: flex; align-items: center; justify-content: center; padding: 0; }
+.die-number { font-size: 6.5cqw; font-weight: 800; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.die.is-rolling { animation: tumble 0.3s linear infinite; }
+
+@keyframes tumble {
+  0% { transform: rotate(0deg) translateY(0); }
+  25% { transform: rotate(14deg) translateY(-12%); }
+  50% { transform: rotate(-10deg) translateY(0); }
+  75% { transform: rotate(8deg) translateY(-8%); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+
+.stage-mon { display: grid; place-items: center; }
+.stage-sprite { width: 15cqw; height: 15cqw; object-fit: contain; image-rendering: pixelated; }
+.stage-caption { max-width: 90%; font-size: max(0.8rem, 3.3cqw); font-weight: 700; line-height: 1.4; color: #fff; text-wrap: balance; }
+
+/* ---------- ปุ่ม action ---------- */
+
+.actions-card.is-mine {
+  background: #fffbe6;
+  box-shadow: var(--shadow), 0 0 0 4px var(--yellow);
+}
+.wait-card { text-align: center; font-weight: 600; color: var(--muted); }
+.action-summary { margin-bottom: 0.5rem; font-weight: 700; }
+.actions-card .form-error { margin-top: 0; margin-bottom: 0.6rem; }
+
+.act-group { display: grid; gap: 0.45rem; margin-top: 0.85rem; }
+.act-group:first-of-type { margin-top: 0.3rem; }
+.group-title { margin: 0; font-size: 0.95rem; font-weight: 800; line-height: 1.45; }
+.act-group .section-note, .act-group .reason { margin: 0; }
+
+.act-grid { display: grid; gap: 0.6rem; }
+.act-row { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+.act-list { grid-template-columns: minmax(0, 1fr); }
+.act-warp { grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
+.act-mons { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+
+.act { display: grid; gap: 0.25rem; align-content: start; min-width: 0; }
+.act-btn {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  text-align: left;
+  padding: 0.45rem 0.8rem;
+  font-size: 1rem;
+}
+.act-text { display: grid; min-width: 0; line-height: 1.35; }
+.act-label { font-weight: 800; overflow-wrap: anywhere; }
+.act-detail { font-size: 0.82rem; font-weight: 600; opacity: 0.92; overflow-wrap: anywhere; }
+.act-sprite { width: 2.6rem; height: 2.6rem; flex: none; image-rendering: pixelated; }
+/* ปุ่มใช้ไม่ได้: พื้นเทา ขอบประ ไม่ใช่แค่จางลง (อ่านออกและไม่พึ่งสีอย่างเดียว) */
+.act-btn:disabled {
+  opacity: 1;
+  color: var(--muted);
+  background: var(--paper-2);
+  border-style: dashed;
+  box-shadow: none;
+}
+.reason {
+  padding-left: 0.55rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--muted);
+  border-left: 3px solid var(--muted);
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.3rem 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 0.8rem;
+  box-shadow: 0 0.15rem 0 var(--ink);
+}
+.chip:disabled { cursor: not-allowed; color: var(--muted); background: var(--paper-2); border-style: dashed; box-shadow: none; }
+.chip.is-selected { background: var(--yellow); transform: translateY(0.1rem); box-shadow: 0 0.05rem 0 var(--ink), inset 0 0 0 3px #fff; }
+.chip-sprite { width: 2.4rem; height: 2.4rem; flex: none; image-rendering: pixelated; }
+.chips-qty .chip { min-width: 4.2rem; justify-content: center; }
+
+.toggle-label { display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; font-weight: 700; cursor: pointer; }
+.toggle-label input { flex: none; width: 1.4rem; height: 1.4rem; accent-color: var(--red); }
+.toggle.is-disabled .toggle-label { color: var(--muted); cursor: not-allowed; }
+
+.encounter {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.3rem;
+  padding: 0.4rem 0.7rem;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 0.9rem;
+}
+.encounter.is-legendary { background: #fff0a8; }
+.encounter-sprite { width: 4.6rem; height: 4.6rem; flex: none; image-rendering: pixelated; }
+.encounter-info { display: grid; min-width: 0; line-height: 1.4; font-size: 0.92rem; }
+.encounter-name { font-size: 1.15rem; font-weight: 800; }
+
+/* ---------- ประวัติ กล่องโปเกม่อน ผลการแข่ง ---------- */
+
+.history { list-style: none; margin: 0; padding: 0; display: grid; max-height: 14rem; overflow-y: auto; font-size: 0.9rem; }
+.history li { padding: 0.3rem 0; border-bottom: 1px dotted var(--muted); overflow-wrap: anywhere; }
+.history li:first-child { font-weight: 800; }
+.history li:last-child { border-bottom: 0; }
+
+.panel-players { display: grid; gap: 1rem; }
+.box-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr)); gap: 0.5rem; }
+.box-mon {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 0.05rem;
+  padding: 0.3rem 0.3rem 0.45rem;
+  text-align: center;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 0.8rem;
+}
+.box-mon.is-starter { border-color: #b88900; background: #fff8d1; }
+.box-mon.is-fainted { border-style: dashed; background: var(--paper-2); }
+.box-mon.is-fainted .box-sprite { filter: grayscale(1); opacity: 0.6; }
+.box-sprite { width: 4rem; height: 4rem; image-rendering: pixelated; }
+.box-name { font-weight: 800; font-size: 0.9rem; line-height: 1.3; overflow-wrap: anywhere; }
+.box-value { font-size: 0.78rem; line-height: 1.3; color: var(--muted); font-weight: 600; }
+.badge-fainted {
+  margin-top: 0.15rem;
+  padding: 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--bad);
+  border-radius: 0.5rem;
+}
+.box-total { margin-top: 0.6rem; font-weight: 700; font-size: 0.92rem; }
+
+.results { background: #fffbe6; box-shadow: var(--shadow), 0 0 0 4px var(--yellow); }
+.results-title { font-size: 1.7rem; font-weight: 800; line-height: 1.4; }
+.results-title:focus { outline: none; }
+.results-winner { margin-bottom: 0.7rem; font-size: 1.1rem; font-weight: 800; color: var(--red); }
+.results-table { width: 100%; margin-bottom: 0.7rem; border-collapse: collapse; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+.results-table th, .results-table td { padding: 0.45rem 0.35rem; text-align: left; border-bottom: 2px solid var(--paper-2); }
+.results-table thead th { font-size: 0.8rem; line-height: 1.3; color: var(--muted); border-bottom: 3px solid var(--ink); }
+.results-table .num { text-align: right; }
+.results-table .rank { width: 2.2rem; font-weight: 800; text-align: center; }
+.results-table .who { font-weight: 800; }
+.results-table .who .color-dot { display: inline-block; vertical-align: middle; margin-right: 0.4rem; }
+.results-table .total { font-weight: 800; }
+.results-table tr.is-winner { background: #fff0a8; }
+.tag-win { background: var(--yellow); }
+.results .btn { margin-top: 0.3rem; }
+
 /* ---------- จอแคบ: แผงอยู่ใต้กระดาน กระดานเต็มความกว้าง ---------- */
 
 @media (max-width: 767px) {
@@ -535,6 +738,7 @@ button, input { font: inherit; color: inherit; }
   .board { aspect-ratio: 1; }
   .choices { grid-template-columns: minmax(0, 1fr); }
   .choices-starters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .act-warp, .act-mons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .card { padding: 0.9rem; }
 }
 

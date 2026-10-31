@@ -1,51 +1,176 @@
-import { BALLS, LAPS_TO_FINISH, TURN_TIMEOUT_MS, ZONE_TARGET, ZONE_VALUE } from '/shared/constants.js';
+import { BOARD_SIZE, ZONE_TARGET, ZONE_VALUE } from '/shared/constants.js';
 import { h, sprite } from '../ui/dom.js';
-import { renderBoard, playerColor } from '../ui/board.js';
-import { BALL_INFO, CLASS_INFO, STARTER_INFO, STEP_LABEL } from '../ui/info.js';
+import { renderBoard, placeToken, playerColor } from '../ui/board.js';
+import { BALL_INFO, STEP_LABEL } from '../ui/info.js';
+import { renderPanel, renderTimer } from '../ui/panel.js';
+import { renderActions } from '../ui/actions.js';
+import { renderResults } from '../ui/results.js';
+import { animateDice, prefersReducedMotion } from '../ui/dice.js';
+import { appendHistory, describeEvent, orderEvents } from '../ui/history.js';
+
+// ระยะเวลาแอนิเมชัน (มิลลิวินาที): ตัวหมากเดินช่องละ 150 ลูกเต๋าหมุน ~600 (อยู่ใน dice.js)
+const STEP_MS = 150;
+const HOLD_MS = { roll: 250, note: 550, result: 1000, battle: 1300 };
 
 // หน้าเกม: กระดานอยู่ซ้าย แผงข้อมูลอยู่ขวา (จอแคบกว่า 768px แผงลงไปอยู่ใต้กระดาน)
 //
-// จุดต่อสำหรับ Task 10 (คืนจาก mountGame ใน .slots):
-//   slots.actions  = <div id="action-area"> ที่ว่างไว้วางปุ่ม action (อยู่ใต้ป้ายบอกตา)
-//   slots.stage    = ช่องกลางกระดานสำหรับลูกเต๋า/แอนิเมชัน
-//   slots.board    = element กระดาน (renderBoard อัปเดตในที่เดิม ตัวหมากย้ายด้วย appendChild)
-// update(room, events) ถูกเรียกทุกครั้งที่ room:update มา พร้อม events ของ action นั้นๆ
+// slots (คืนจาก mountGame): actions = ที่วางปุ่ม action, board = element กระดาน, stage = กลางกระดาน (ลูกเต๋า/ผลลัพธ์)
+// update(room, events) ถูกเรียกทุกครั้งที่ room:update มา: เล่นแอนิเมชันจาก events ก่อน แล้วค่อยวาดสถานะใหม่
+// ถ้ามี update ตามมาติดๆ จะต่อคิว (อันที่ไม่ใช่อันสุดท้ายข้ามแอนิเมชัน) จึงไม่มีสถานะค้างครึ่งๆ กลางๆ
 export function mountGame(root, ctx) {
   const boardEl = h('div', { class: 'board' });
   const turnBanner = h('div', { class: 'turn-banner', role: 'status', 'aria-live': 'polite' });
   const timerEl = h('span', { class: 'timer' });
   const actionArea = h('div', { id: 'action-area', class: 'action-area', 'aria-label': 'ปุ่มคำสั่ง' });
-  const playerList = h('ul', { class: 'players' });
+  const resultsSlot = h('div', { class: 'results-slot' });
+  const historyList = h('ol', { class: 'history' });
+  const playersSlot = h('div', { class: 'panel-players' });
   const legend = buildLegend();
 
   const panel = h('aside', { class: 'panel' },
     h('section', { class: 'card turn-card' }, turnBanner, timerEl),
+    resultsSlot,
     actionArea,
-    h('section', { class: 'card' }, h('h2', { class: 'section-title' }, 'ผู้เล่น'), playerList),
+    h('section', { class: 'card history-card' },
+      h('h2', { class: 'section-title' }, 'เกิดอะไรขึ้นบ้าง'),
+      historyList),
+    playersSlot,
     legend);
 
   root.replaceChildren(h('div', { class: 'game' },
     h('div', { class: 'board-wrap' }, boardEl),
     panel));
 
-  let room = null;
-  let deadline = null;
-  const tick = setInterval(updateTimer, 500);
+  let room = null; // สถานะที่แสดงอยู่ตอนนี้
+  let destroyed = false;
+  let history = [];
+  let resultsShown = false;
+  let stage = null;
+  const queue = [];
+  let pumping = false;
+  const tick = setInterval(() => renderTimer(timerEl, room, ctx.serverNow), 500);
+  const myId = () => ctx.getMyId();
+  const send = action => ctx.request('game:action', { action });
 
-  function myId() {
-    return ctx.getMyId();
+  const sleep = ms => (prefersReducedMotion() || ms <= 0 ? Promise.resolve() : new Promise(resolve => setTimeout(resolve, ms)));
+
+  const namesOf = r => ({
+    player: id => r.game.players.find(p => p.id === id)?.name ?? '',
+    mon: dexId => ctx.pokedexById.get(dexId)?.name ?? '?',
+    ball: ball => BALL_INFO[ball]?.name ?? ball,
+  });
+
+  // ---------- ช่องกลางกระดาน ----------
+
+  function ensureStage() {
+    if (stage) return stage;
+    const slot = boardEl.querySelector('[data-slot="stage"]');
+    if (!slot) return null;
+    slot.setAttribute('aria-hidden', 'true');
+    const dieA = h('div', { class: 'stage-die' });
+    const dieB = h('div', { class: 'stage-die' });
+    const labelA = h('span', { class: 'die-label' });
+    const labelB = h('span', { class: 'die-label' });
+    const dice = h('div', { class: 'stage-dice' },
+      h('div', { class: 'stage-die-box' }, dieA, labelA),
+      h('div', { class: 'stage-die-box' }, dieB, labelB));
+    const mon = h('div', { class: 'stage-mon' });
+    const caption = h('p', { class: 'stage-caption' });
+    slot.replaceChildren(dice, mon, caption);
+    stage = { slot, dice, dieA, dieB, labelA, labelB, boxB: dieB.parentElement, mon, caption };
+    return stage;
   }
 
-  // เวลาที่เหลือคิดจากนาฬิกาเซิร์ฟเวอร์ (ประมาณจากหัว Date) ไม่เชื่อนาฬิกาเครื่องเรา
-  function updateTimer() {
-    const playing = room?.game?.phase === 'playing' && deadline;
-    timerEl.hidden = !playing;
-    if (!playing) return;
-    const left = Math.min(TURN_TIMEOUT_MS, Math.max(0, deadline - ctx.serverNow()));
-    const secs = Math.ceil(left / 1000);
-    timerEl.textContent = `เหลือเวลา ${secs} วินาที`;
-    timerEl.classList.toggle('is-low', secs <= 10);
+  // dice = [{ value, label? }] (ว่าง = ไม่แสดงลูกเต๋า); monDex = โปเกม่อนที่จะโชว์; คืน Promise ที่เสร็จเมื่อลูกเต๋าหยุด
+  function setStage({ caption = '', dice = [], monDex = null }) {
+    const st = ensureStage();
+    if (!st) return Promise.resolve();
+    st.caption.textContent = caption;
+    st.dice.hidden = dice.length === 0;
+    st.boxB.hidden = dice.length < 2;
+    st.labelA.textContent = dice[0]?.label ?? '';
+    st.labelB.textContent = dice[1]?.label ?? '';
+    st.mon.replaceChildren(...(monDex ? [sprite(ctx.pokedexById, monDex, 'stage-sprite')] : []));
+    st.mon.hidden = !monDex;
+    return Promise.all(dice.map((d, i) => animateDice(i === 0 ? st.dieA : st.dieB, d.value)));
   }
+
+  // เปลี่ยนแค่ข้อความใต้ลูกเต๋า (ไม่หมุนลูกเต๋าซ้ำ)
+  function setCaption(text) {
+    const st = ensureStage();
+    if (st) st.caption.textContent = text;
+  }
+
+  function idleStage(r) {
+    const { game } = r;
+    if (game.phase === 'ended') {
+      const names = game.result.winnerIds.map(id => namesOf(r).player(id)).join(', ');
+      setStage({ caption: `เกมจบแล้ว ผู้ชนะ ${names}` });
+      return;
+    }
+    const actorId = game.turn.step === 'defend' ? game.turn.battle?.defenderId : game.turn.playerId;
+    setStage({ caption: `ตาของ ${namesOf(r).player(actorId)}` });
+  }
+
+  // ---------- แอนิเมชันจาก events ----------
+
+  async function walk(ev) {
+    for (let k = 1; k <= ev.steps; k++) {
+      if (destroyed) return;
+      const token = placeToken(boardEl, ev.playerId, (ev.from + k) % BOARD_SIZE);
+      if (token && !prefersReducedMotion() && token.animate) {
+        token.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-45%)' }, { transform: 'translateY(0)' }], { duration: STEP_MS, easing: 'ease-out' });
+      }
+      await sleep(STEP_MS);
+    }
+  }
+
+  async function playEvents(events, nextRoom) {
+    const names = namesOf(nextRoom);
+    for (const ev of orderEvents(events)) {
+      if (destroyed) return;
+      const line = describeEvent(ev, names);
+      switch (ev.type) {
+        case 'rolled':
+          await setStage({ caption: `${names.player(ev.playerId)} กำลังทอย…`, dice: [{ value: ev.value }] });
+          setCaption(line);
+          await sleep(HOLD_MS.roll);
+          break;
+        case 'moved':
+          await walk(ev);
+          break;
+        case 'caught':
+        case 'fled': {
+          const dice = ev.roll == null ? [] : [{ value: ev.roll }];
+          await setStage({ caption: `${names.player(ev.playerId)} โยนบอลใส่ ${names.mon(ev.dexId)}…`, dice, monDex: ev.dexId });
+          setCaption(line);
+          await sleep(HOLD_MS.result);
+          break;
+        }
+        case 'battle': {
+          const noDice = ev.attackerTotal == null || ev.defenderTotal == null;
+          const dice = noDice ? [] : [
+            { value: ev.attackerTotal, label: names.player(ev.attackerId) },
+            { value: ev.defenderTotal, label: names.player(ev.defenderId) },
+          ];
+          await setStage({ caption: `${names.player(ev.attackerId)} สู้กับ ${names.player(ev.defenderId)}…`, dice });
+          setCaption(line);
+          await sleep(HOLD_MS.battle);
+          break;
+        }
+        case 'salary':
+        case 'finished':
+        case 'ability':
+          setStage({ caption: line });
+          await sleep(HOLD_MS.note);
+          break;
+        default:
+          break; // ซื้อ/ขาย/รักษา/เปลี่ยนตา: ไม่ต้องหน่วง แสดงในประวัติและสถานะใหม่เลย
+      }
+    }
+  }
+
+  // ---------- วาดสถานะ ----------
 
   function renderTurn() {
     const game = room.game;
@@ -64,51 +189,59 @@ export function mountGame(root, ctx) {
       h('span', { class: 'turn-step' }, STEP_LABEL[turn.step] ?? ''));
   }
 
-  function renderPlayers() {
-    const game = room.game;
-    const order = game.order;
-    playerList.replaceChildren(...game.players.map(p => {
-      const info = room.players.find(r => r.id === p.id);
-      const isMe = p.id === myId();
-      const turnPos = order.indexOf(p.id) + 1;
-      const active = game.phase === 'playing' && p.id === game.turn.playerId;
-      const progress = p.finished ? 'เข้าเส้นชัยแล้ว' : `เดินแล้ว ${p.laps}/${LAPS_TO_FINISH} รอบ`;
-      return h('li', { class: `player${active ? ' is-active' : ''}${info?.connected === false ? ' is-offline' : ''}` },
-        h('div', { class: 'player-head' },
-          h('span', { class: 'color-dot', style: { '--c': playerColor(room, p.id) }, 'aria-hidden': 'true' }),
-          h('span', { class: 'player-name' }, p.name, isMe && h('span', { class: 'tag tag-me' }, 'คุณ')),
-          h('span', { class: `status ${info?.connected === false ? 'off' : 'on'}` },
-            h('span', { class: 'status-dot', 'aria-hidden': 'true' }),
-            info?.connected === false ? 'หลุด' : 'ออนไลน์')),
-        h('div', { class: 'player-sub' },
-          `${CLASS_INFO[p.cls]?.name ?? ''} · ${STARTER_INFO[p.starter]?.name ?? ''} · ลำดับเดินที่ ${turnPos}`),
-        h('div', { class: 'player-stats' },
-          h('span', { class: 'money' }, `เงิน ${p.money}`),
-          h('span', {}, progress)),
-        h('div', { class: 'balls' },
-          Object.keys(BALLS).map(b => h('span', { class: `ball ball-${b}` }, `${BALL_INFO[b].name} ${p.balls[b]}`))),
-        h('div', { class: 'mons', 'aria-label': `โปเกม่อนของ ${p.name}` },
-          p.mons.length === 0 && h('span', { class: 'muted' }, 'ยังไม่มีโปเกม่อน'),
-          p.mons.map(m => h('span', {
-            class: `mon${m.fainted ? ' is-fainted' : ''}${m.starter ? ' is-starter' : ''}`,
-            title: `${ctx.pokedexById.get(m.dexId)?.name ?? ''}${m.fainted ? ' (หมดสภาพ)' : ''}${m.starter ? ' (ตัวเริ่มต้น)' : ''}`,
-          }, sprite(ctx.pokedexById, m.dexId, 'mon-sprite')))));
-    }));
+  function renderHistory() {
+    historyList.replaceChildren(...(history.length === 0
+      ? [h('li', { class: 'muted' }, 'ยังไม่มีเหตุการณ์')]
+      : [...history].reverse().map(line => h('li', {}, line))));
+  }
+
+  function applyState(next, events) {
+    const first = room === null;
+    room = next;
+    renderBoard(boardEl, room, ctx.pokedexById, myId());
+    renderTurn();
+    renderPanel(playersSlot, room, ctx.pokedexById, myId());
+    renderTimer(timerEl, room, ctx.serverNow);
+    history = appendHistory(history, events, namesOf(room));
+    renderHistory();
+    renderActions(actionArea, room, myId(), send, ctx.pokedexById);
+    if (first || room.game.phase === 'ended' || events.some(e => e.type === 'turn')) idleStage(room);
+
+    if (room.game.phase === 'ended' && room.game.result && !resultsShown) {
+      resultsShown = true;
+      const players = room.game.players.map(p => ({ id: p.id, name: p.name, color: playerColor(room, p.id) }));
+      renderResults(resultsSlot, room.game.result, players, ctx.leaveRoom);
+      const title = resultsSlot.querySelector('#results-title');
+      resultsSlot.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+      title?.focus({ preventScroll: true });
+    }
+  }
+
+  // คิว: ทีละ update; ถ้ามีอันถัดไปรออยู่แล้วให้ข้ามแอนิเมชันของอันนี้ (วาดสถานะอย่างเดียว)
+  async function pump() {
+    if (pumping) return;
+    pumping = true;
+    try {
+      while (queue.length && !destroyed) {
+        const item = queue.shift();
+        const animate = room !== null && queue.length === 0 && item.events.length > 0 && !document.hidden;
+        if (animate) await playEvents(item.events, item.room);
+        if (destroyed) return;
+        applyState(item.room, item.events);
+      }
+    } finally {
+      pumping = false;
+    }
   }
 
   return {
-    slots: { actions: actionArea, board: boardEl },
+    slots: { actions: actionArea, board: boardEl, get stage() { return stage?.slot ?? null; } },
     update(nextRoom, events = []) {
-      room = nextRoom;
-      deadline = room.deadline;
-      renderBoard(boardEl, room, ctx.pokedexById, myId());
-      renderTurn();
-      renderPlayers();
-      updateTimer();
-      this.slots.stage = boardEl.querySelector('[data-slot="stage"]');
-      this.lastEvents = events;
+      queue.push({ room: nextRoom, events });
+      pump();
     },
     destroy() {
+      destroyed = true;
       clearInterval(tick);
     },
   };
