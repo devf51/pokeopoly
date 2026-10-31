@@ -757,7 +757,9 @@ button, input { font: inherit; color: inherit; }
   .board-center { min-height: 0; overflow: hidden; }
   .board-center:has(.action-area:not([hidden]) .actions-card) { justify-content: flex-start; gap: 1cqw; padding: 1.5cqw; }
   .board-center:has(.action-area:not([hidden]) .actions-card) .center-title { display: none; }
-  .board-center:has(.action-area:not([hidden]) .actions-card) .stage { min-height: 0; flex: none; gap: 0.6cqw; }
+  /* ลูกเต๋าวางข้างข้อความ (แถวเดียว) ประหยัดความสูงให้การ์ด */
+  .board-center:has(.action-area:not([hidden]) .actions-card) .stage { min-height: 0; flex: none; flex-direction: row; flex-wrap: wrap; gap: 0.6cqw 1.6cqw; }
+  .board-center:has(.action-area:not([hidden]) .actions-card) .stage-caption { max-width: 60%; text-align: start; }
   .board-center:has(.action-area:not([hidden]) .actions-card) .stage-dice { gap: 1.6cqw; }
   .board-center:has(.action-area:not([hidden]) .actions-card) .die { width: 6cqw; height: 6cqw; padding: 0.7cqw; box-shadow: 0.4cqw 0.4cqw 0 var(--ink); }
   .board-center:has(.action-area:not([hidden]) .actions-card) .pip { width: 1.2cqw; height: 1.2cqw; }
@@ -771,6 +773,18 @@ button, input { font: inherit; color: inherit; }
   /* กลางกระดานเล็ก (จอ 768–950px): body หดก่อนจนเหลือขั้นต่ำ แล้ว footer ค่อยหดและเลื่อนได้ ปุ่มไม่ถูกตัดทิ้ง */
   .board-center .actions-body { flex-shrink: 1000; min-height: 4.5rem; }
   .board-center .actions-footer { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+  /* body/footer ตัดส่วนเกิน: เว้นที่ให้กรอบโฟกัส (5px นอกปุ่ม) ไม่ถูกตัด */
+  .board-center .actions-body { padding: 0.4rem; margin: -0.4rem -0.4rem 0; }
+  .board-center .actions-footer { padding: 0.45rem 0.4rem 0.4rem; margin: 0.5rem -0.4rem -0.4rem; }
+  /* กลางกระดานที่ไม่สูงมาก (แล็ปท็อป 1366×~625): ระยะห่างกระชับขึ้น ให้กล่องโปเกม่อนที่เจอยังเห็นพร้อมปุ่มโยนบอล */
+  .board-center .actions-card { padding: 0.7rem 0.9rem; }
+  .board-center .actions-card .section-title { font-size: 1.05rem; margin-bottom: 0.3rem; }
+  .board-center .action-summary { margin-bottom: 0.3rem; }
+  .board-center .encounter { margin-top: 0; padding: 0.2rem 0.6rem; }
+  .board-center .encounter-sprite { width: 3.2rem; height: 3.2rem; }
+  .board-center .actions-footer .act-group { gap: 0.35rem; }
+  .board-center .actions-footer .act-btn { padding: 0.35rem 0.7rem; }
+  .board-center .actions-footer .act-detail { font-size: 0.76rem; line-height: 1.3; }
   .board-center .actions-card { width: 100%; max-height: 100%; }
   .board-center .wait-card { display: none; }
   .board-center .act-warp, .board-center .act-mons { grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); }
