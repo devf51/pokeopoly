@@ -1,17 +1,9 @@
 import { MIN_STEPS, RANGER_MAX_STEPS, SQUIRTLE_MAX_WARP } from '../constants.js';
 import { rollD6 } from '../rng.js';
 import { GameError } from './errors.js';
+import { requireClassUse, requireStarter } from './abilities.js';
+import { CATCH_FAILED_HANDLERS, CATCH_HANDLERS, CENTER_HANDLERS, SHOP_HANDLERS } from './tile-actions.js';
 import { afterTile, enterTile, moveBy } from './turn.js';
-
-const noUses = () => new GameError('NO_USES', 'ใช้ความสามารถนี้ไม่ได้ เพราะหมดแล้วหรือคลาส/ตัวเริ่มต้นไม่ตรง');
-
-function requireStarter(player, starter) {
-  if (player.starter !== starter || player.starterUsed) throw noUses();
-}
-
-function requireClassUse(player, cls) {
-  if (player.cls !== cls || player.classUses <= 0) throw noUses();
-}
 
 function setRoll(state, player, value, source, events) {
   state.turn.roll = value;
@@ -86,9 +78,10 @@ export const HANDLERS = {
     RANGER_ADJUST: rangerAdjust,
     PIKACHU_REROLL: pikachuReroll,
   },
-  catch: { SKIP: finishTile },
-  shop: { DONE: finishTile },
-  center: { DONE: finishTile },
+  catch: { ...CATCH_HANDLERS, SKIP: finishTile },
+  'catch-failed': CATCH_FAILED_HANDLERS,
+  shop: { ...SHOP_HANDLERS, DONE: finishTile },
+  center: { ...CENTER_HANDLERS, DONE: finishTile },
 };
 
 // ผู้ที่ต้องเป็นฝ่ายทำ action ของ step นั้น (ปกติเจ้าของตา; step 'defend' ของ Task 7 เป็นฝ่ายถูกท้า)
